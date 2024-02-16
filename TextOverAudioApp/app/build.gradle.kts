@@ -24,6 +24,17 @@ android {
         }
     }
 
+    chaquopy {
+        defaultConfig {
+            version = "3.11"
+        }
+        sourceSets {
+            getByName("main") {
+                srcDir("..\\..\\audioCommunicationModule")
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false

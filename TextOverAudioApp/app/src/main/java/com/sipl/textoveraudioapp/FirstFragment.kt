@@ -6,6 +6,8 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.navigation.fragment.findNavController
+import com.chaquo.python.PyObject
+import com.chaquo.python.Python
 import com.sipl.textoveraudioapp.databinding.FragmentFirstBinding
 
 /**
@@ -32,8 +34,11 @@ class FirstFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        val python: Python = Python.getInstance();
+        val file: PyObject = python.getModule("main");
+        val firstFragmentText: String = file.callAttr("return_string").toString();
 
-        binding.textviewFirst.setText("welcome to our project");
+        binding.textviewFirst.setText(firstFragmentText);
 
         binding.buttonFirst.setOnClickListener {
             findNavController().navigate(R.id.action_FirstFragment_to_SecondFragment)
