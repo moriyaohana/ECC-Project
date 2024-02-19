@@ -1,15 +1,18 @@
-# This is a sample Python script.
-
-# Press Shift+F10 to execute it or replace it with your code.
-# Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
+from char_symbol_map import CharSymbolMap
 
 
-def return_string():
-    # Use a breakpoint in the code line below to debug your script.
-    return('welcome to ECC-project')  # Press Ctrl+F8 to toggle the breakpoint.
+def main():
+    initial_message = "Sofi and Moriya!"
+    char_map = CharSymbolMap(16, 3)
+
+    encoded_message = [char_map.char_to_symbol(char) for char in initial_message]
+
+    print(encoded_message)
+
+    decoded_message = "".join([char_map.symbol_to_char(sym) for sym in encoded_message])
+
+    print(decoded_message)
 
 
-# Press the green button in the gutter to run the script.
 if __name__ == '__main__':
-    return_string()
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
+    main()

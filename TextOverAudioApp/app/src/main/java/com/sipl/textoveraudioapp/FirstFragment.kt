@@ -35,10 +35,22 @@ class FirstFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         val python: Python = Python.getInstance();
-        val file: PyObject = python.getModule("main");
-        val firstFragmentText: String = file.callAttr("return_string").toString();
+        val charSymbolMapModule: PyObject = python.getModule("char_symbol_map");
+        val charSymbolMap: PyObject = charSymbolMapModule.callAttr("CharSymbolMap",16, 3, 256);
 
-        binding.textviewFirst.setText(firstFragmentText);
+        binding.sendMessage.setOnClickListener {
+            val inputText: String = binding.messageInput.text.toString();
+
+            val encodedMessage = charSymbolMap.callAttr("string_to_symbols", inputText).asList();
+
+            val stringBuilder = StringBuilder()
+            for ((index, innerList) in encodedMessage.withIndex()) {
+                stringBuilder.append("Symbol $index: $innerList\n");
+            }
+
+            binding.textView.text = stringBuilder.toString();
+        }
+
 
         binding.buttonFirst.setOnClickListener {
             findNavController().navigate(R.id.action_FirstFragment_to_SecondFragment)
