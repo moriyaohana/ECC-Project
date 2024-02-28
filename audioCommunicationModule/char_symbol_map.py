@@ -16,6 +16,7 @@ class CharSymbolMap:
             symbol_weight: int,
             character_space_size: int = 256):
 
+        # CR: Add type hints to members of class
         self.symbol_size = symbol_size
         self.symbol_weight = symbol_weight
         self.symbol_map = CharSymbolMap._create_mapping(
@@ -34,6 +35,7 @@ class CharSymbolMap:
         # Initialize the list to store binary vectors
         binary_vectors = []
 
+        # CR: This could be list comprehension
         # Iterate over index combinations
         for indices in index_combinations:
             # Initialize a binary vector with all zeros

@@ -29,6 +29,7 @@ class TextOverSound:
         self._symbol_size = symbol_size
         self._symbol_weight = symbol_weight
 
+    # CR: Should this be private?
     @staticmethod
     def get_frequencies(start_range: float,
                         end_range: float,
