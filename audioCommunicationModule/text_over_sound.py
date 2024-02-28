@@ -58,6 +58,8 @@ class TextOverSound:
 
         MILLISECOND_TO_SECOND_FACTOR = 1 / 1000
         num_samples = int((self._duration_millis * MILLISECOND_TO_SECOND_FACTOR) * self._sample_rate_khz)
+
+        # CR: Why are you initializing this for each call to the function? Do the parameters change?
         char_symbol_map = CharSymbolMap(self._symbol_size, self._symbol_weight)
         presence_array = char_symbol_map.char_to_symbol(char)
 
