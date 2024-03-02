@@ -29,7 +29,12 @@ class TextOverSound:
         self._symbol_size = symbol_size
         self._symbol_weight = symbol_weight
 
+    @property
+    def sample_rate_khz(self):
+        return self._sample_rate_khz
+
     # CR: Should this be private?
+    # TODO: change the frequencies that they will be on DFT lattice
     @staticmethod
     def get_frequencies(start_range: float,
                         end_range: float,
@@ -56,15 +61,14 @@ class TextOverSound:
         if len(char) != 1:
             raise ValueError("The size of the string (char) must be equal to 1.")
 
-        MILLISECOND_TO_SECOND_FACTOR = 1 / 1000
-        num_samples = int((self._duration_millis * MILLISECOND_TO_SECOND_FACTOR) * self._sample_rate_khz)
+        num_samples = int(self._duration_millis * self._sample_rate_khz)
 
         # CR: Why are you initializing this for each call to the function? Do the parameters change?
         char_symbol_map = CharSymbolMap(self._symbol_size, self._symbol_weight)
         presence_array = char_symbol_map.char_to_symbol(char)
 
         pcm_data = np.zeros(num_samples, dtype=np.int16)
-
+    # CR: index to
         for index in range(num_samples):
             sample = sum([np.sin(2 * np.pi * frequency * index / self._sample_rate_khz) for
                           frequency_index, frequency in
@@ -75,5 +79,6 @@ class TextOverSound:
             # sound is represented by a 16 bit value PCM16 (sound format)
             PCM_16BIT_MAXIMUM_VALUE = 32767
             pcm_data[index] = int(sample * PCM_16BIT_MAXIMUM_VALUE)
+        # CR: plot the abs of the fft of pcm_data
 
         return pcm_data.tobytes()
