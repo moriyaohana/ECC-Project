@@ -25,7 +25,10 @@ class TextOverSound:
                  ):
         self._sample_rate_khz = sample_rate_khz
         self._duration_millis = duration_millis
-        self._frequencies = self.get_frequencies(start_range_frequencies_khz, end_range_frequencies_khz, symbol_size)
+        self._frequencies = self.get_frequencies(start_range_frequencies_khz,
+                                                 end_range_frequencies_khz,
+                                                 symbol_size,
+                                                 sample_rate_khz)
         self._symbol_size = symbol_size
         self._symbol_weight = symbol_weight
 
@@ -34,18 +37,20 @@ class TextOverSound:
         return self._sample_rate_khz
 
     # CR: Should this be private?
-    # TODO: change the frequencies that they will be on DFT lattice
+    # CR: why should we work in given range if the range set by: start_range,
+    #     symbol_size and sample_rate ?
     @staticmethod
-    def get_frequencies(start_range: float,
-                        end_range: float,
-                        symbol_size: int) -> list[float]:
+    def get_frequencies(start_range_khz: float,
+                        end_range_khz: float,
+                        symbol_size: int,
+                        sample_rate_khz) -> list[float]:
         if symbol_size <= 1:
             raise ValueError("The size of the array (symbol_size) must be greater than 1.")
 
-        step = (end_range - start_range) / (symbol_size - 1)
+        step = sample_rate_khz / float(symbol_size)
 
         # Use a list comprehension to generate the array
-        frequencies = [start_range + index * step for index in range(symbol_size)]
+        frequencies = [start_range_khz + index * step for index in range(symbol_size)]
 
         return frequencies
 
