@@ -1,5 +1,8 @@
 package com.sipl.textoveraudioapp
 
+import android.media.AudioFormat
+import android.media.AudioManager
+import android.media.AudioTrack
 import android.os.Bundle
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
@@ -9,6 +12,7 @@ import androidx.navigation.fragment.findNavController
 import com.chaquo.python.PyObject
 import com.chaquo.python.Python
 import com.sipl.textoveraudioapp.databinding.FragmentFirstBinding
+import java.nio.ByteBuffer
 
 /**
  * A simple [Fragment] subclass as the default destination in the navigation.
@@ -35,18 +39,33 @@ class FirstFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         val python: Python = Python.getInstance();
-        val charSymbolMapModule: PyObject = python.getModule("char_symbol_map");
-        val charSymbolMap: PyObject = charSymbolMapModule.callAttr("CharSymbolMap",16, 3, 256);
+        val textOverAudioModule: PyObject = python.getModule("text_over_audio");
+        val textOverAudio: PyObject = textOverAudioModule.callAttr("TextOverAudio",250, 10, 20, 16, 3, 16);
 
         binding.sendMessage.setOnClickListener {
             val inputText: String = binding.messageInput.text.toString();
 
-            val encodedMessage = charSymbolMap.callAttr("string_to_symbols", inputText).asList();
+            val messageSound = textOverAudio.callAttr("string_to_pcm_data", inputText).toJava(ByteBuffer)
+
+            val bufferSize = AudioTrack.getMinBufferSize(16,
+                AudioFormat.CHANNEL_OUT_MONO,
+                AudioFormat.ENCODING_PCM_16BIT);
+
+            val audioTrack = AudioTrack(AudioManager.STREAM_MUSIC,
+                16000,
+                AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT,
+                bufferSize,
+                AudioTrack.MODE_STREAM);
+
+            audioTrack.play();
+            audioTrack.write()
 
             val stringBuilder = StringBuilder()
             for ((index, innerList) in encodedMessage.withIndex()) {
                 stringBuilder.append("Symbol $index: $innerList\n");
             }
+
+
 
             binding.textView.text = stringBuilder.toString();
         }
