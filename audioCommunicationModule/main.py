@@ -4,8 +4,8 @@ from text_over_sound import TextOverSound
 
 
 def main():
-    initial_message = "sofi and Moriya"
-    text_over_sound = TextOverSound(250,10,20,16,3,16)
+    initial_message = "sofi"
+    text_over_sound = TextOverSound(250,200, 300, 16, 3, 16)
     pcm_data_initial_message = text_over_sound.string_to_pcm_data(initial_message)
 
     # instantiate PyAudio (1)
@@ -27,7 +27,6 @@ def main():
 
     # close PyAudio (5)
     p.terminate()
-
 
 
 if __name__ == '__main__':
