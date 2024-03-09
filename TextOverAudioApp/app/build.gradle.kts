@@ -27,7 +27,11 @@ android {
     chaquopy {
         defaultConfig {
             version = "3.11"
+            pip {
+                install("numpy")
+            }
         }
+
         sourceSets {
             getByName("main") {
                 srcDir("..\\..\\audioCommunicationModule")
