@@ -2,6 +2,7 @@ import numpy as np
 
 from char_symbol_map import CharSymbolMap
 
+import matplotlib.pyplot as plt
 
 class TextOverSound:
     """
@@ -74,6 +75,7 @@ class TextOverSound:
 
         pcm_data = np.zeros(num_samples, dtype=np.int16)
     # CR: index to
+        sample = 0
         for index in range(num_samples):
             sample = sum([np.sin(2 * np.pi * frequency * index / self._sample_rate_khz) for
                           frequency_index, frequency in
@@ -85,5 +87,30 @@ class TextOverSound:
             PCM_16BIT_MAXIMUM_VALUE = 32767
             pcm_data[index] = int(sample * PCM_16BIT_MAXIMUM_VALUE)
         # CR: plot the abs of the fft of pcm_data
+
+        # Perform Inverse FFT
+        inverse_fft_result = np.fft.ifft(pcm_data)
+
+        # Plot the original signal and the result of inverse FFT
+        time_axis = (np.arange(num_samples) / self._sample_rate_khz)
+        t = np.linspace(0, self._duration_millis, int(self._sample_rate_khz * self._duration_millis), endpoint=False)
+        plt.figure(figsize=(12, 6))
+
+        plt.subplot(2, 1, 1)
+        plt.plot(t[:len(t) // 10], pcm_data[:len(pcm_data) // 10])
+        plt.title('Original Signal')
+        plt.xlabel('Time (ms)')
+        plt.ylabel('Amplitude')
+
+
+
+        plt.subplot(2, 1, 2)
+        plt.plot(t[:len(t) // 10], np.real(inverse_fft_result)[:len(pcm_data) // 10])  # Use np.real() to extract the real part of the complex result
+        plt.title('Inverse FFT Result')
+        plt.xlabel('Time (ms)')
+        plt.ylabel('Amplitude')
+
+        plt.tight_layout()
+        plt.show()
 
         return pcm_data.tobytes()
