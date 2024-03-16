@@ -1,16 +1,26 @@
 import pyaudio
-
+from matplotlib import pyplot as plt
 from text_over_sound import TextOverSound
+import numpy as np
 
 
 def main():
     initial_message = "s"
     text_over_sound = TextOverSound(4096,0.5, 2, 16, 3, 16)
     pcm_data_initial_message = text_over_sound.char_to_pcm_data(initial_message)
-    recovered_char = text_over_sound.pcm_to_char(pcm_data_initial_message)
-    print(recovered_char)
 
-    text_over_sound.plot_per_char(initial_message)
+    plt.figure(figsize=(12, 6))
+    plt.subplot(2, 1, 1)
+    text_over_sound.plot_signal_per_char(initial_message)
+
+    plt.subplot(2, 1, 2)
+    text_over_sound.plot_pcm_fft(pcm_data_initial_message)
+
+    plt.tight_layout()
+    plt.show()
+
+    recovered_char = text_over_sound.pcm_to_char(pcm_data_initial_message)
+    print(f"Sent char: {initial_message}. recovered_char: {recovered_char}")
 
     # instantiate PyAudio (1)
     p = pyaudio.PyAudio()

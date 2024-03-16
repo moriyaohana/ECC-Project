@@ -5,9 +5,6 @@ from char_symbol_map import CharSymbolMap
 import matplotlib.pyplot as plt
 
 
-
-
-
 class TextOverSound:
     """
     This class is responsible for translating text to an audio signals,
@@ -120,27 +117,21 @@ class TextOverSound:
 
         return pcm_data.tobytes()
 
-    # plot: the signal and the fft of it.
-    def plot_per_char(self, char: str) -> None:
-        # PerformFFT
-        selected_frequencies = self.get_char_selected_frequencies(char)
-        signal = self.get_inverse_fft(selected_frequencies)
-
-        plt.figure(figsize=(12, 6))
-
-        self.plot_signal(signal)
-
-        plt.subplot(2, 1, 2)
-        signal_fft = np.fft.fft(signal)[:self._num_samples // 2]
-        f, fft_pcm = self.pcm_fft(self.char_to_pcm_data(char))
+    def plot_pcm_fft(self, pcm_data: bytes) -> None:
+        f, fft_pcm = self.pcm_fft(pcm_data)
         plt.plot(f, np.abs(fft_pcm))
 
         plt.title('FFT Result freq')
         plt.xlabel('frequency (Hz)')
         plt.ylabel('Amplitude')
 
-        plt.tight_layout()
-        plt.show()
+    # plot: the signal
+    def plot_signal_per_char(self, char: str) -> None:
+        # PerformFFT
+        selected_frequencies = self.get_char_selected_frequencies(char)
+        signal = self.get_inverse_fft(selected_frequencies)
+
+        self.plot_signal(signal)
 
     def pcm_to_signal(self, pcm_data: bytes) -> np.ndarray:
         pcm_array = np.frombuffer(pcm_data, dtype=np.int16)
@@ -150,20 +141,15 @@ class TextOverSound:
 
     def plot_signal(self, signal):
         t = np.linspace(0, self._duration_millis, int(self._sample_rate_khz * self._duration_millis), endpoint=False)
-        plt.figure(figsize=(12, 6))
 
-        plt.subplot(2, 1, 1)
         plt.plot(t[:len(t) // 10], signal[:len(signal) // 10])
         plt.title('Original Signal')
         plt.xlabel('Time (ms)')
         plt.ylabel('Amplitude')
 
-        plt.tight_layout()
-        plt.show()
-
     def pcm_fft(self, pcm_data: bytes) -> tuple[np.ndarray, np.ndarray]:
         signal = self.pcm_to_signal(pcm_data)
-        self.plot_signal(signal)
+
         # getting the magnitude of positive frequencies
         signal_fft = np.fft.fft(signal)[:self._num_samples // 2]
         f = np.fft.fftfreq(self._num_samples, 1 / self.sample_rate_khz)[:self._num_samples // 2]
