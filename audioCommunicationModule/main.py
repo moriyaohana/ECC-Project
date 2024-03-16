@@ -4,9 +4,13 @@ from text_over_sound import TextOverSound
 
 
 def main():
-    initial_message = "sofi"
-    text_over_sound = TextOverSound(250,200, 300, 16, 3, 16)
-    pcm_data_initial_message = text_over_sound.string_to_pcm_data(initial_message)
+    initial_message = "s"
+    text_over_sound = TextOverSound(4096,0.5, 2, 16, 3, 16)
+    pcm_data_initial_message = text_over_sound.char_to_pcm_data(initial_message)
+    recovered_char = text_over_sound.pcm_to_char(pcm_data_initial_message)
+    print(recovered_char)
+
+    text_over_sound.plot_per_char(initial_message)
 
     # instantiate PyAudio (1)
     p = pyaudio.PyAudio()
