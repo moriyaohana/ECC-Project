@@ -171,7 +171,3 @@ class TextOverSound:
             present_array[self._frequencies.index(frequency)] = 1
 
         return self._char_symbol_map.symbol_to_char(present_array)
-
-
-
-
