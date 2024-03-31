@@ -72,7 +72,8 @@ class TextOverSound:
         # CR: Why are you initializing this for each call to the function? Do the parameters change?
         char_symbol_map = CharSymbolMap(self._symbol_size, self._symbol_weight)
         presence_array = char_symbol_map.char_to_symbol(char)
-
+        presence_array = np.zeros(16, dtype = np.int16)
+        presence_array[1] = 1
         pcm_data = np.zeros(num_samples, dtype=np.int16)
     # CR: index to
         sample = 0
