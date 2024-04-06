@@ -1,8 +1,35 @@
 import pyaudio
 from text_over_sound import TextOverSound
+import numpy as np
+
+
+def normalized_correlation(signal, preamble):
+    signal_pcm = np.frombuffer(signal, dtype=np.int16)
+    preamble_pcm = np.frombuffer(preamble, dtype=np.int16)
+
+    normalized_signal_pcm = signal_pcm / np.std(signal_pcm)
+    normalized_preamble_pcm = preamble_pcm / np.std(preamble_pcm)
+
+    return np.correlate(normalized_signal_pcm, normalized_preamble_pcm, mode='valid')
 
 
 def main():
+    initial_message = "ttst"
+    text_over_sound = TextOverSound(4096, 0.5, 2, 16, 3, 16)
+    pcm_data_initial_message = text_over_sound.string_to_pcm_data(initial_message)
+
+    signal = text_over_sound.pcm_to_signal(pcm_data_initial_message)
+
+    pcm_preamble = text_over_sound.string_to_pcm_data('s')
+    preamble = text_over_sound.pcm_to_signal(pcm_preamble)
+
+    normalized_signal = (signal - np.mean(signal)) / (np.std(signal))
+    normalized_preamble = (preamble - np.mean(preamble)) / (np.std(preamble))
+
+    correlation = np.correlate(normalized_signal,
+                               normalized_preamble) / len(normalized_preamble)
+    peak_index = np.argmax(correlation)
+
     # Initializing the Library Object
     text_over_sound = TextOverSound(4096,
                                     0.5,

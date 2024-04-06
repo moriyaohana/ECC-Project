@@ -29,6 +29,10 @@ class TextOverSound:
         self._char_symbol_map = CharSymbolMap(symbol_size, symbol_weight)
 
     @property
+    def num_samples(self):
+        return self._num_samples
+
+    @property
     def sample_rate_khz(self):
         return self._sample_rate_khz
 
@@ -119,7 +123,7 @@ class TextOverSound:
     def pcm_to_signal(self, pcm_data: bytes) -> np.ndarray:
         pcm_array = np.frombuffer(pcm_data, dtype=np.int16)
 
-        PCM_16BIT_MAXIMUM_VALUE = 32767.0 / self._symbol_weight
+        PCM_16BIT_MAXIMUM_VALUE = 32767.0 # / self._symbol_weight
         return pcm_array / PCM_16BIT_MAXIMUM_VALUE
 
     def plot_signal(self, signal):
@@ -156,9 +160,6 @@ class TextOverSound:
         return self._char_symbol_map.symbol_to_char(present_array)
 
     def pcm_to_string(self, pcm_data: bytes) -> str:
-        if len(pcm_data) % self._num_samples != 0:
-            raise ValueError("Message data must be a multiple of symbol sample size")
-
         message = str()
         for symbol_data_index in range(0, len(pcm_data), 2 * self._num_samples):
             symbol_pcm_data = pcm_data[symbol_data_index: symbol_data_index + 2 * self._num_samples]
