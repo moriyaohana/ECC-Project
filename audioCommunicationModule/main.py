@@ -5,10 +5,18 @@ import numpy as np
 
 
 def main():
-    initial_message = "s"
+    initial_message = "ttttstz"
     text_over_sound = TextOverSound(4096,0.5, 2, 16, 3, 16)
-    pcm_data_initial_message = text_over_sound.char_to_pcm_data(initial_message)
+    pcm_data_initial_message = text_over_sound.string_to_pcm_data(initial_message)
 
+    initial_message = "ttttstz"
+    pcm_preamble = text_over_sound.string_to_pcm_data('s')
+    correlation = np.correlate(text_over_sound.pcm_to_signal(pcm_data_initial_message),
+                               text_over_sound.pcm_to_signal(pcm_preamble),
+                               mode='valid')
+    peak_index = np.argmax(correlation)
+
+    # plotting
     plt.figure(figsize=(12, 6))
     plt.subplot(2, 1, 1)
     text_over_sound.plot_signal_per_char(initial_message)
@@ -19,6 +27,7 @@ def main():
     plt.tight_layout()
     plt.show()
 
+    # inner loop
     recovered_char = text_over_sound.pcm_to_char(pcm_data_initial_message)
     print(f"Sent char: {initial_message}. recovered_char: {recovered_char}")
 
