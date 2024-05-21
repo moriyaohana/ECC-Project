@@ -17,36 +17,24 @@ class TextOverSound:
     _duration_millis: float
     _sample_rate_khz: float
 
-    def __init__(self,
-                 num_samples: int,
-                 start_range_frequencies_khz: float,
-                 end_range_frequencies_khz: float,
-                 symbol_size: int,
-                 symbol_weight: int,
-                 sample_rate_khz: float = 16
-                 ):
+    def __init__(self, num_samples: int, start_range_frequencies_khz: float, end_range_frequencies_khz: float,
+                 symbol_size: int, symbol_weight: int, sample_rate_khz: float = 16):
         self._num_samples = num_samples
         self._sample_rate_khz = sample_rate_khz
         self._duration_millis = num_samples / sample_rate_khz
-        self._frequencies = self.get_frequencies(start_range_frequencies_khz,
-                                                 end_range_frequencies_khz,
-                                                 symbol_size,
-                                                 sample_rate_khz,
-                                                 num_samples)
+        self._frequencies = self.get_frequencies(start_range_frequencies_khz, end_range_frequencies_khz, symbol_size,
+                                                 sample_rate_khz, num_samples)
         self._symbol_size = symbol_size
         self._symbol_weight = symbol_weight
         self._char_symbol_map = CharSymbolMap(symbol_size, symbol_weight)
+
     @property
     def sample_rate_khz(self):
         return self._sample_rate_khz
 
     @staticmethod
-    def get_step(
-            start_range_khz: float,
-            end_range_khz: float,
-            symbol_size: int,
-            sample_rate_khz: float,
-            num_samples: int) -> float:
+    def get_step(start_range_khz: float, end_range_khz: float, symbol_size: int, sample_rate_khz: float,
+                 num_samples: int) -> float:
 
         diff = sample_rate_khz / num_samples
         i = 1
@@ -60,10 +48,7 @@ class TextOverSound:
 
     # CR: Should this be private?
     @staticmethod
-    def get_frequencies(start_range_khz: float,
-                        end_range_khz: float,
-                        symbol_size: int,
-                        sample_rate_khz: float,
+    def get_frequencies(start_range_khz: float, end_range_khz: float, symbol_size: int, sample_rate_khz: float,
                         num_samples: int) -> list[float]:
         if symbol_size <= 1:
             raise ValueError("The size of the array (symbol_size) must be greater than 1.")
@@ -82,12 +67,12 @@ class TextOverSound:
 
         return pcm_data
 
-    def get_inverse_fft(self,
-                        frequencies_khz: list[float]) -> list[float]:
+    def get_inverse_fft(self, frequencies_khz: list[float]) -> list[float]:
         sum_of_sin = []
         for time_step in range(self._num_samples):  # num_samples is representing desecrate time axis t[s]
 
-            sin_values = [np.sin(2 * np.pi * frequency * time_step / self._sample_rate_khz) for frequency in frequencies_khz ]
+            sin_values = [np.sin(2 * np.pi * frequency * time_step / self._sample_rate_khz) for frequency in
+                          frequencies_khz]
 
             sample = sum(sin_values)
             sum_of_sin.append(sample)
@@ -100,10 +85,7 @@ class TextOverSound:
 
         presence_array = self._char_symbol_map.char_to_symbol(char)
 
-
-        selected_frequencies = [frequency for
-                                (index, frequency) in
-                                enumerate(self._frequencies) if
+        selected_frequencies = [frequency for (index, frequency) in enumerate(self._frequencies) if
                                 presence_array[index] == 1]
         return selected_frequencies
 
@@ -172,3 +154,14 @@ class TextOverSound:
             present_array[self._frequencies.index(frequency)] = 1
 
         return self._char_symbol_map.symbol_to_char(present_array)
+
+    def pcm_to_string(self, pcm_data: bytes) -> str:
+        if len(pcm_data) % self._num_samples != 0:
+            raise ValueError("Message data must be a multiple of symbol sample size")
+
+        message = str()
+        for symbol_data_index in range(0, len(pcm_data), 2 * self._num_samples):
+            symbol_pcm_data = pcm_data[symbol_data_index: symbol_data_index + 2 * self._num_samples]
+            message += self.pcm_to_char(symbol_pcm_data)
+
+        return message
