@@ -1,7 +1,8 @@
 from itertools import combinations
+from symbol import OFDMSymbol
 
 
-class CharSymbolMap:
+class SymbolMap:
     """
         construct the mapping between characters and symbols.
         param symbol_size is the size of the symbol binary vector
@@ -19,7 +20,7 @@ class CharSymbolMap:
         # CR: Add type hints to members of class
         self.symbol_size = symbol_size
         self.symbol_weight = symbol_weight
-        self.symbol_map = CharSymbolMap._create_mapping(
+        self.symbol_map = SymbolMap._create_mapping(
             symbol_size,
             symbol_weight,
             character_space_size)
@@ -28,34 +29,22 @@ class CharSymbolMap:
     def _create_mapping(
             symbol_size: int,
             symbol_weight: int,
-            character_space_size: int) -> list[list[int]]:
+            character_space_size: int) -> list[OFDMSymbol]:
         # Generate all combinations of indices with weight symbol_weight
         index_combinations = list(combinations(range(symbol_size), symbol_weight))
 
-        # Initialize the list to store binary vectors
-        binary_vectors = []
+        symbols = [OFDMSymbol(set(index_combination)) for index_combination in index_combinations]
 
-        # CR: This could be list comprehension
-        # Iterate over index combinations
-        for indices in index_combinations:
-            # Initialize a binary vector with all zeros
-            binary_vector = [0] * symbol_size
-            # Set the selected indices to 1
-            for index in indices:
-                binary_vector[index] = 1
-            # Add the binary vector to the list
-            binary_vectors.append(binary_vector)
+        return symbols
 
-        return binary_vectors[:character_space_size]
-
-    def char_to_symbol(self, char: str) -> list[int]:
+    def char_to_symbol(self, char: str) -> OFDMSymbol:
         return self.symbol_map[ord(char)]
 
-    def symbol_to_char(self, symbol: list[int]) -> str:
+    def symbol_to_char(self, symbol: OFDMSymbol) -> str:
         return chr(self.symbol_map.index(symbol))
 
-    def string_to_symbols(self, string: str) -> list[list[int]]:
+    def string_to_symbols(self, string: str) -> list[OFDMSymbol]:
         return [self.char_to_symbol(char) for char in string]
 
-    def symbols_to_string(self, symbols: list[list[int]]) -> str:
-        return ''.join([self.symbol_to_char(sym) for sym in symbols])
+    def symbols_to_string(self, symbols: list[OFDMSymbol]) -> str:
+        return ''.join([self.symbol_to_char(symbol) for symbol in symbols])

@@ -1,5 +1,6 @@
 import pyaudio
 from text_over_sound import TextOverSound
+from OFDM import OFDM
 import numpy as np
 
 
@@ -15,7 +16,13 @@ def normalized_correlation(signal, preamble):
 
 def main():
     initial_message = "ttst"
-    text_over_sound = TextOverSound(4096, 0.5, 2, 16, 3, 16)
+    text_over_sound = TextOverSound(4096,
+                                    500,
+                                    5_000,
+                                    16,
+                                    3,
+                                    16_000)
+
     pcm_data_initial_message = text_over_sound.string_to_pcm_data(initial_message)
 
     signal = text_over_sound.pcm_to_signal(pcm_data_initial_message)
@@ -31,13 +38,6 @@ def main():
     peak_index = np.argmax(correlation)
 
     # Initializing the Library Object
-    text_over_sound = TextOverSound(4096,
-                                    0.5,
-                                    5,
-                                    16,
-                                    3,
-                                    16)
-
     initial_message = "Error Correcting Codes"
 
     # Modulating the text to a PCM of an audio signal
@@ -49,11 +49,10 @@ def main():
     # instantiate PyAudio
     playback = pyaudio.PyAudio()
 
-    KHZ_TO_HZ_FACTOR = 1000
     # open stream
     stream = playback.open(format=playback.get_format_from_width(2),
                            channels=1,
-                           rate=text_over_sound.sample_rate_khz * KHZ_TO_HZ_FACTOR,
+                           rate=text_over_sound.sample_rate_hz,
                            output=True)
 
     # play stream
