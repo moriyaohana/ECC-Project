@@ -125,10 +125,10 @@ class OFDM(object):
         sum_of_sin = []
         for time_step in range(self._samples_per_symbol):  # num_samples is representing desecrate time axis t[s]
 
-            sin_values = [np.sin(2 * np.pi * frequency * time_step / self.sample_rate_hz) for frequency in
+            sin_values = [np.sin(2 * np.pi * frequency * time_step / self._sample_rate_hz) for frequency in
                           frequencies_hz]
 
-            sample = sum(sin_values)
+            sample = sum(sin_values) / self._symbol_weight
             sum_of_sin.append(sample)
 
         return sum_of_sin

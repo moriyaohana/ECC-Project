@@ -1,16 +1,17 @@
 import numpy as np
-from text_over_sound import TextOverSound
+from OFDM import OFDM
+from symbol import OFDMSymbol
 from typing import Optional
 
 
 class Receiver(object):
     CORRELATION_THRESHOLD = 0.5
 
-    def __init__(self, text_over_sound: TextOverSound, sync_preamble: np.array):
-        self._text_over_sound = text_over_sound
+    def __init__(self, modulation: OFDM, sync_preamble: list[float]):
+        self._modulation = modulation
         self._is_synced: bool = False
-        self._sync_preamble: np.array = sync_preamble
-        self._buffer: np.array = np.array([])
+        self._sync_preamble: list[float] = sync_preamble
+        self._buffer: list[float] = []
 
     def _detect_preamble(self) -> Optional[int]:
         correlation = np.correlate(self._buffer,
@@ -26,7 +27,7 @@ class Receiver(object):
         if self._is_synced:
             return
 
-        buffer_size_to_keep = 2 * self._text_over_sound.num_samples
+        buffer_size_to_keep = 2 * self._modulation.num_samples
         self._buffer = self._buffer[-buffer_size_to_keep:]
 
         preamble_location = self._detect_preamble()
@@ -36,17 +37,17 @@ class Receiver(object):
         self._is_synced = True
         self._buffer = self._buffer[preamble_location + len(self._sync_preamble):]
 
-    def get_message(self) -> str:
+    def get_message(self) -> list[OFDMSymbol]:
         if not self._is_synced:
-            return str()
-        return self._text_over_sound.pcm_to_string(self._buffer.tobytes())
+            return list()
+        return self._modulation.signal_to_symbols(self._buffer)
 
-    def receive_buffer(self, pcm_data: bytes) -> None:
-        self._buffer = np.append(self._buffer, self._text_over_sound.pcm_to_signal(pcm_data))
+    def receive_buffer(self, signal: list[float]) -> None:
+        self._buffer = np.append(self._buffer, signal)
         self._try_sync()
 
     @staticmethod
-    def normalized_correlation(signal: np.array, preamble: np.array) -> np.ndarray:
+    def normalized_correlation(signal: np.ndarray, preamble: np.ndarray) -> np.ndarray:
         normalized_signal = (signal - np.mean(signal)) / np.std(signal)
         normalized_preamble = (preamble - np.mean(preamble)) / np.std(preamble)
 

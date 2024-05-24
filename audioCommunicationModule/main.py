@@ -23,21 +23,21 @@ def main():
                                     3,
                                     16_000)
 
-    pcm_data_initial_message = text_over_sound.string_to_pcm_data(initial_message)
-
-    signal = text_over_sound.pcm_to_signal(pcm_data_initial_message)
-
-    pcm_preamble = text_over_sound.string_to_pcm_data('s')
-    preamble = text_over_sound.pcm_to_signal(pcm_preamble)
-
-    normalized_signal = (signal - np.mean(signal)) / (np.std(signal))
-    normalized_preamble = (preamble - np.mean(preamble)) / (np.std(preamble))
-
-    correlation = np.correlate(normalized_signal,
-                               normalized_preamble) / len(normalized_preamble)
-    peak_index = np.argmax(correlation)
-
-    # Initializing the Library Object
+    # pcm_data_initial_message = text_over_sound.string_to_pcm_data(initial_message)
+    #
+    # signal = text_over_sound.pcm_to_signal(pcm_data_initial_message)
+    #
+    # pcm_preamble = text_over_sound.string_to_pcm_data('s')
+    # preamble = text_over_sound.pcm_to_signal(pcm_preamble)
+    #
+    # normalized_signal = (signal - np.mean(signal)) / (np.std(signal))
+    # normalized_preamble = (preamble - np.mean(preamble)) / (np.std(preamble))
+    #
+    # correlation = np.correlate(normalized_signal,
+    #                            normalized_preamble) / len(normalized_preamble)
+    # peak_index = np.argmax(correlation)
+    #
+    # # Initializing the Library Object
     initial_message = "Error Correcting Codes"
 
     # Modulating the text to a PCM of an audio signal

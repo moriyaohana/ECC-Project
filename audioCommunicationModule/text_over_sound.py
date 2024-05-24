@@ -64,7 +64,7 @@ class TextOverSound:
         # 32767 is the maximum value for 16-bit signed integer
         # sound is represented by a 16 bit value PCM16 (sound format)
         # Normalization by symbol_weight needed to prevent overflow
-        PCM_16BIT_MAXIMUM_VALUE = 32767.0 / self._symbol_weight
+        PCM_16BIT_MAXIMUM_VALUE = 32767.0# / self._symbol_weight
         pcm_data = np.array([int(sample * PCM_16BIT_MAXIMUM_VALUE) for sample in signal], dtype=np.int16)
 
         return pcm_data.tobytes()
@@ -92,7 +92,7 @@ class TextOverSound:
         pcm_array = np.frombuffer(pcm_data, dtype=np.int16)
 
         # Normalization by symbol_weight needed to prevent overflow
-        PCM_16BIT_MAXIMUM_VALUE = 32767.0 / self._symbol_weight
+        PCM_16BIT_MAXIMUM_VALUE = 32767.0# / self._symbol_weight
         return list(pcm_array / PCM_16BIT_MAXIMUM_VALUE)
 
     def pcm_to_char(self, pcm_data: bytes) -> str:
