@@ -63,7 +63,7 @@ def test_receiver():
 
     message_signal = pcm_to_signal(text_over_sound.string_to_pcm_data("Daniel"))
 
-    noise_size = 5 * len(preamble)
+    noise_size = int(2.7 * len(preamble))
     noise = [random.choice([-1, 1]) * random.random() for _ in range(noise_size)]
 
     final_test_signal = noise + preamble + message_signal
