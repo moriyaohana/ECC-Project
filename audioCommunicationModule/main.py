@@ -1,7 +1,19 @@
+import random
+
 import pyaudio
 from text_over_sound import TextOverSound
+from symbol_map import SymbolMap
 from OFDM import OFDM
+from receiver import Receiver
+from utils import *
 import numpy as np
+
+default_samples_per_symbol = 4096
+default_frequency_range_start_hz = 500
+default_frequency_range_end_hz = 5_000
+default_symbol_size = 16
+default_symbol_weight = 3
+default_sample_rate_hz = 16_000
 
 
 def normalized_correlation(signal, preamble):
@@ -14,7 +26,60 @@ def normalized_correlation(signal, preamble):
     return np.correlate(normalized_signal_pcm, normalized_preamble_pcm, mode='valid')
 
 
+def random_frequencies(frequencies_hz: list[float], num_samples: int, sample_rate_hz: float):
+    chunk_size = 64
+    preamble = []
+    for _ in range(0, num_samples, chunk_size):
+        chunk = inverse_fft([random.choice(frequencies_hz)], chunk_size, sample_rate_hz)
+        preamble += chunk
+
+    remainder = num_samples - len(preamble)
+    preamble += inverse_fft(random.choice(frequencies_hz), remainder, sample_rate_hz)
+
+    return preamble
+
+
+def test_receiver():
+    symbol_map = SymbolMap(default_symbol_size, default_symbol_weight)
+    modulation = OFDM(
+        default_symbol_weight,
+        default_symbol_size,
+        default_samples_per_symbol,
+        default_sample_rate_hz,
+        default_frequency_range_start_hz,
+        default_frequency_range_end_hz
+    )
+
+    preamble = random_frequencies(modulation.frequencies_hz, 4096, modulation.sample_rate_hz)
+
+    receiver = Receiver(modulation, preamble)
+
+    text_over_sound = TextOverSound(default_samples_per_symbol,
+                                    default_frequency_range_start_hz,
+                                    default_frequency_range_end_hz,
+                                    default_symbol_size,
+                                    default_symbol_weight,
+                                    default_sample_rate_hz)
+
+    message_signal = pcm_to_signal(text_over_sound.string_to_pcm_data("Daniel"))
+
+    noise_size = 5 * len(preamble)
+    noise = [random.choice([-1, 1]) * random.random() for _ in range(noise_size)]
+
+    final_test_signal = noise + preamble + message_signal
+
+    for chunk_index in range(0, len(final_test_signal), default_samples_per_symbol):
+        chunk = final_test_signal[chunk_index:chunk_index + default_samples_per_symbol]
+        receiver.receive_buffer(chunk)
+
+    message = symbol_map.symbols_to_string(receiver.get_message())
+    print(message)
+
+
 def main():
+    test_receiver()
+
+
     initial_message = "ttst"
     text_over_sound = TextOverSound(4096,
                                     500,

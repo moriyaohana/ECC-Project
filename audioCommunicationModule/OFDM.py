@@ -1,6 +1,7 @@
 import numpy as np
 from typing import Optional
 from symbol import OFDMSymbol
+from utils import *
 
 import matplotlib.pyplot as plt
 
@@ -36,6 +37,10 @@ class OFDM(object):
     def sample_rate_hz(self):
         return self._sample_rate_hz
 
+    @property
+    def frequencies_hz(self):
+        return self._frequencies
+
     @staticmethod
     def get_step(start_range_hz: float, end_range_hz: float, symbol_size: int, sample_rate_hz: float,
                  num_samples: int) -> float:
@@ -62,37 +67,8 @@ class OFDM(object):
 
         return frequencies
 
-    def signal_fft(self, signal: list[float]) -> list[tuple[float, float]]:
-        signal_fft = np.fft.fft(signal)[:self._samples_per_symbol // 2]
-        sampled_frequencies = np.fft.fftfreq(self._samples_per_symbol, 1 / self._sample_rate_hz)[
-                              :self._samples_per_symbol // 2]
-
-        assert (len(signal_fft) == len(sampled_frequencies))
-
-        return zip(sampled_frequencies, np.abs(signal_fft))
-
-    def plot_signal(self, signal):
-        t = np.linspace(0, self._duration_sec, int(self._sample_rate_hz * self._duration_sec), endpoint=False)
-
-        plt.plot(t[:len(t) // 10], signal[:len(signal) // 10])
-        plt.title('Original Signal')
-        plt.xlabel('Time (ms)')
-        plt.ylabel('Amplitude')
-
-        plt.show()
-
-    def plot_signal_fft(self, signal: list[float]):
-        f, fft = list(zip(*self.signal_fft(signal)))
-        plt.plot(f, fft)
-
-        plt.title('FFT Result freq')
-        plt.xlabel('frequency (Hz)')
-        plt.ylabel('Amplitude')
-
-        plt.show()
-
     def top_frequencies(self, signal: list[float]) -> list[tuple[float, float]]:
-        frequencies = self.signal_fft(signal)
+        frequencies = signal_fft(signal, self._sample_rate_hz)
 
         MAGNITUDE_INDEX = 1
         sorted_frequencies = sorted(frequencies, key=lambda item: item[MAGNITUDE_INDEX], reverse=True)
@@ -117,28 +93,16 @@ class OFDM(object):
         message = []
         for signal_data_index in range(0, len(signal), self._samples_per_symbol):
             signal_chunk = signal[signal_data_index:signal_data_index + self._samples_per_symbol]
-            message += self.signal_to_symbol(signal_chunk)
+            message.append(self.signal_to_symbol(signal_chunk))
 
         return message
-
-    def inverse_fft(self, frequencies_hz: list[float]) -> list[float]:
-        sum_of_sin = []
-        for time_step in range(self._samples_per_symbol):  # num_samples is representing desecrate time axis t[s]
-
-            sin_values = [np.sin(2 * np.pi * frequency * time_step / self._sample_rate_hz) for frequency in
-                          frequencies_hz]
-
-            sample = sum(sin_values) / self._symbol_weight
-            sum_of_sin.append(sample)
-
-        return sum_of_sin
 
     def symbol_to_signal(self, symbol: OFDMSymbol) -> list[float]:
         if symbol.weight != self._symbol_weight:
             raise RuntimeError('OFDM Symbol of incorrect weight. '
                                f'Expected {self._symbol_weight}, but got {symbol.weight}')
 
-        return self.inverse_fft(symbol.frequencies(self._frequencies))
+        return inverse_fft(symbol.frequencies(self._frequencies), self._samples_per_symbol, self._sample_rate_hz)
 
     def symbols_to_signal(self, symbols: list[OFDMSymbol]) -> list[float]:
         signal = []

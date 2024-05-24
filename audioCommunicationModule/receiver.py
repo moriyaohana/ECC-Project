@@ -14,9 +14,8 @@ class Receiver(object):
         self._buffer: list[float] = []
 
     def _detect_preamble(self) -> Optional[int]:
-        correlation = np.correlate(self._buffer,
-                                   self._sync_preamble,
-                                   mode='valid')
+        correlation = self.normalized_correlation(self._buffer,
+                                                  self._sync_preamble)
         peak_value = np.max(correlation)
         if peak_value > self.CORRELATION_THRESHOLD:
             return np.argmax(correlation)
