@@ -6,7 +6,7 @@ from utils import *
 import matplotlib.pyplot as plt
 
 class OFDM(object):
-    SNR_THRESHOLD = 1  # TODO: Set to something sensible
+    SNR_THRESHOLD = 2  # TODO: Set to something sensible
 
     _symbol_weight: int
     _symbol_size: int
@@ -76,6 +76,9 @@ class OFDM(object):
         return sorted_frequencies[:self._symbol_weight + 1]
 
     def signal_to_symbol(self, signal: list[float]) -> Optional[OFDMSymbol]:
+        if len(signal) != self._samples_per_symbol:
+            raise RuntimeError('Unexpected signal length.'
+                               f'Expected {self._samples_per_symbol} but got {len(signal)}')
         top_frequencies = self.top_frequencies(signal)
         MAGNITUDE_INDEX = 1
         if (top_frequencies[self._symbol_weight - 1][MAGNITUDE_INDEX] /
@@ -90,6 +93,9 @@ class OFDM(object):
         return OFDMSymbol(present_frequencies)
 
     def signal_to_symbols(self, signal: list[float]) -> list[OFDMSymbol]:
+        if len(signal) % self._samples_per_symbol != 0:
+            signal = signal + [0] * (self._samples_per_symbol - len(signal) % self._samples_per_symbol)
+
         message = []
         for signal_data_index in range(0, len(signal), self._samples_per_symbol):
             signal_chunk = signal[signal_data_index:signal_data_index + self._samples_per_symbol]

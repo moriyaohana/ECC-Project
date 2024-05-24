@@ -25,22 +25,22 @@ def signal_fft(signal: list[float], sample_rate_hz: float) -> list[tuple[float, 
 
     assert (len(fft_magnitudes) == len(sampled_frequencies))
 
-    return zip(sampled_frequencies, np.abs(fft_magnitudes))
+    return list(zip(sampled_frequencies, np.abs(fft_magnitudes)))
 
 
 def plot_signal(signal: list[float], sample_rate_hz: float):
-    t = np.linspace(0, len(signal) * sample_rate_hz, len(signal), endpoint=False)
+    t = np.linspace(0, len(signal) / sample_rate_hz, len(signal), endpoint=False)
 
-    plt.plot(t[:len(t) // 10], signal[:len(signal) // 10])
+    plt.plot(t, signal)
     plt.title('Original Signal')
-    plt.xlabel('Time (ms)')
+    plt.xlabel('Time (sec)')
     plt.ylabel('Amplitude')
 
     plt.show()
 
 
-def plot_signal_fft(signal: list[float]):
-    f, fft = list(zip(*signal_fft(signal)))
+def plot_signal_fft(signal: list[float], sample_rate_hz: float):
+    f, fft = list(zip(*signal_fft(signal, sample_rate_hz)))
     plt.plot(f, fft)
 
     plt.title('FFT Result freq')

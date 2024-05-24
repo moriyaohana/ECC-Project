@@ -39,7 +39,7 @@ class Receiver(object):
     def get_message(self) -> list[OFDMSymbol]:
         if not self._is_synced:
             return list()
-        return self._modulation.signal_to_symbols(self._buffer)
+        return self._modulation.signal_to_symbols(list(self._buffer))
 
     def receive_buffer(self, signal: list[float]) -> None:
         self._buffer = np.append(self._buffer, signal)

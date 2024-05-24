@@ -29,12 +29,12 @@ def normalized_correlation(signal, preamble):
 def random_frequencies(frequencies_hz: list[float], num_samples: int, sample_rate_hz: float):
     chunk_size = 64
     preamble = []
-    for _ in range(0, num_samples, chunk_size):
-        chunk = inverse_fft([random.choice(frequencies_hz)], chunk_size, sample_rate_hz)
+    for freq_index, _ in enumerate(range(0, num_samples, chunk_size)):
+        chunk = inverse_fft([frequencies_hz[(3 * freq_index) % len(frequencies_hz)]], chunk_size, sample_rate_hz)
         preamble += chunk
 
     remainder = num_samples - len(preamble)
-    preamble += inverse_fft(random.choice(frequencies_hz), remainder, sample_rate_hz)
+    preamble += inverse_fft([frequencies_hz[-1]], remainder, sample_rate_hz)
 
     return preamble
 
@@ -76,41 +76,29 @@ def test_receiver():
     print(message)
 
 
-def main():
-    test_receiver()
+def load_audio_file(path: str) -> bytes:
+    with open(path, "rb") as audio_file:
+        return audio_file.read()
 
 
-    initial_message = "ttst"
-    text_over_sound = TextOverSound(4096,
-                                    500,
-                                    5_000,
-                                    16,
-                                    3,
-                                    16_000)
+def test_recorded_file(receiver: Receiver, symbol_map: SymbolMap, path: str):
+    audio_data = load_audio_file(path)
+    audio_signal = pcm_to_signal(audio_data)
 
-    # pcm_data_initial_message = text_over_sound.string_to_pcm_data(initial_message)
-    #
-    # signal = text_over_sound.pcm_to_signal(pcm_data_initial_message)
-    #
-    # pcm_preamble = text_over_sound.string_to_pcm_data('s')
-    # preamble = text_over_sound.pcm_to_signal(pcm_preamble)
-    #
-    # normalized_signal = (signal - np.mean(signal)) / (np.std(signal))
-    # normalized_preamble = (preamble - np.mean(preamble)) / (np.std(preamble))
-    #
-    # correlation = np.correlate(normalized_signal,
-    #                            normalized_preamble) / len(normalized_preamble)
-    # peak_index = np.argmax(correlation)
-    #
-    # # Initializing the Library Object
-    initial_message = "Error Correcting Codes"
+    chunk_size = receiver._modulation.num_samples
+    for chunk_index in range(0, len(audio_signal), chunk_size):
+        if receiver._is_synced:
+            print(symbol_map.symbols_to_string(receiver.get_message()))
+        receiver.receive_buffer(audio_signal[chunk_index:chunk_index + chunk_size])
 
-    # Modulating the text to a PCM of an audio signal
-    pcm_data_initial_message = text_over_sound.string_to_pcm_data(initial_message)
+    message = symbol_map.symbols_to_string(receiver.get_message())
+    print(message)
 
-    recovered_message = text_over_sound.pcm_to_string(pcm_data_initial_message)
-    print(f"Sent string: {initial_message}. recovered string: {recovered_message}")
+def test_receiver_live(symbol_map: SymbolMap, receiver: Receiver, text_over_sound: TextOverSound):
+    return
 
+def play_test_data(text_over_sound: TextOverSound, message: str, preamble: list[float]):
+    pcm_data = signal_to_pcm(preamble) + text_over_sound.string_to_pcm_data(message)
     # instantiate PyAudio
     playback = pyaudio.PyAudio()
 
@@ -121,7 +109,7 @@ def main():
                            output=True)
 
     # play stream
-    stream.write(pcm_data_initial_message)
+    stream.write(pcm_data)
 
     # stop stream
     stream.stop_stream()
@@ -129,6 +117,31 @@ def main():
 
     # close PyAudio
     playback.terminate()
+
+
+def main():
+    symbol_map = SymbolMap(default_symbol_size, default_symbol_weight)
+    modulation = OFDM(
+        default_symbol_weight,
+        default_symbol_size,
+        default_samples_per_symbol,
+        default_sample_rate_hz,
+        default_frequency_range_start_hz,
+        default_frequency_range_end_hz
+    )
+
+    text_over_sound = TextOverSound(default_samples_per_symbol,
+                                    default_frequency_range_start_hz,
+                                    default_frequency_range_end_hz,
+                                    default_symbol_size,
+                                    default_symbol_weight,
+                                    default_sample_rate_hz)
+
+    preamble = random_frequencies(modulation.frequencies_hz, 4096, modulation.sample_rate_hz)
+
+    receiver = Receiver(modulation, preamble)
+
+    test_recorded_file(receiver, symbol_map, "message_example.wav")
 
 
 if __name__ == '__main__':
