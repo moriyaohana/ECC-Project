@@ -3,10 +3,9 @@ from typing import Optional
 from symbol import OFDMSymbol
 from utils import *
 
-import matplotlib.pyplot as plt
 
 class OFDM(object):
-    SNR_THRESHOLD = 2  # TODO: Set to something sensible
+    SNR_THRESHOLD = 1  # TODO: Set to something sensible
 
     _symbol_weight: int
     _symbol_size: int
@@ -83,6 +82,9 @@ class OFDM(object):
         MAGNITUDE_INDEX = 1
         if (top_frequencies[self._symbol_weight - 1][MAGNITUDE_INDEX] /
                 top_frequencies[self._symbol_weight][MAGNITUDE_INDEX] < self.SNR_THRESHOLD):
+            return None
+
+        if not all((frequency in self._frequencies) for frequency, _ in top_frequencies[:-1]):
             return None
 
         present_frequencies = {

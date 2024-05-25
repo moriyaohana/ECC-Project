@@ -3,6 +3,8 @@ from symbol import OFDMSymbol
 
 
 class SymbolMap:
+    UNRECOGNISED_SYMBOL = '_'
+
     """
         construct the mapping between characters and symbols.
         param symbol_size is the size of the symbol binary vector
@@ -18,12 +20,22 @@ class SymbolMap:
             character_space_size: int = 256):
 
         # CR: Add type hints to members of class
-        self.symbol_size = symbol_size
-        self.symbol_weight = symbol_weight
-        self.symbol_map = SymbolMap._create_mapping(
+        self._symbol_size = symbol_size
+        self._symbol_weight = symbol_weight
+        self._symbol_map = SymbolMap._create_mapping(
             symbol_size,
             symbol_weight,
             character_space_size)
+        self._sync_symbol = self._symbol_map[character_space_size]
+        self._termination_symbol = self._symbol_map[character_space_size + 1]
+
+    @property
+    def sync_symbol(self):
+        return self._sync_symbol
+
+    @property
+    def termination_symbol(self):
+        return self._termination_symbol
 
     @staticmethod
     def _create_mapping(
@@ -38,10 +50,12 @@ class SymbolMap:
         return symbols
 
     def char_to_symbol(self, char: str) -> OFDMSymbol:
-        return self.symbol_map[ord(char)]
+        return self._symbol_map[ord(char)]
 
-    def symbol_to_char(self, symbol: OFDMSymbol) -> str:
-        return chr(self.symbol_map.index(symbol))
+    def symbol_to_char(self, symbol: OFDMSymbol | None) -> str:
+        if symbol is None:
+            return self.UNRECOGNISED_SYMBOL
+        return chr(self._symbol_map.index(symbol))
 
     def string_to_symbols(self, string: str) -> list[OFDMSymbol]:
         return [self.char_to_symbol(char) for char in string]
