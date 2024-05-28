@@ -10,6 +10,10 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
+import android.content.Context
+import android.net.wifi.WifiManager
+import android.text.format.Formatter
+
 
 
 class MainActivity : AppCompatActivity(), SensorEventListener {
@@ -28,6 +32,15 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
 
         sensorManager = getSystemService(SENSOR_SERVICE) as SensorManager
         accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+
+        val ipAddress = getIpAddress()
+        Log.d("MainActivity", "IP Address: $ipAddress")
+    }
+
+    private fun getIpAddress(): String? {
+        val wifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+        val ipAddress = wifiManager.connectionInfo.ipAddress
+        return Formatter.formatIpAddress(ipAddress)
     }
 
     override fun onResume() {
@@ -64,7 +77,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
 //            val rgbValue = RGBValue(red, green, blue)
 //            Log.d("RGBValue", "Red: ${rgbValue.red}, Green: ${rgbValue1.green}, Blue: ${rgbValue.blue}")
 
-            val snrDb = 25.0 // Define your desired SNR in dB
+            val snrDb = 5.0 // Define your desired SNR in dB
 
             val noisyRGBValue = addNoiseToRGB(red, green, blue, snrDb)
 
