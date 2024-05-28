@@ -40,6 +40,13 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
 //        val ipAddressTextView: TextView = findViewById(R.id.ipAddressTextView)
 //        ipAddressTextView.text = "IP Address: $ipAddress"
 
+        val server = false // Set server to true if you want to start the ServerThread
+        if (server) {
+            ServerThread().start()
+        } else {
+            ClientThread("192.168.1.16", 12345).start() // Provide the server IP address and port
+        }
+
     }
 
     private fun getIpAddress(): String? {
