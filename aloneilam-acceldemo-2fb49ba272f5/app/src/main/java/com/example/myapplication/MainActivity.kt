@@ -13,7 +13,7 @@ import androidx.appcompat.app.AppCompatActivity
 import android.content.Context
 import android.net.wifi.WifiManager
 import android.text.format.Formatter
-
+import android.widget.TextView
 
 
 class MainActivity : AppCompatActivity(), SensorEventListener {
@@ -27,6 +27,8 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+
         rgbView = RGBView(this, bufferSize = 100) // Buffer size for 10 seconds with updates every 100ms
         setContentView(rgbView)
 
@@ -35,6 +37,9 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
 
         val ipAddress = getIpAddress()
         Log.d("MainActivity", "IP Address: $ipAddress")
+//        val ipAddressTextView: TextView = findViewById(R.id.ipAddressTextView)
+//        ipAddressTextView.text = "IP Address: $ipAddress"
+
     }
 
     private fun getIpAddress(): String? {
