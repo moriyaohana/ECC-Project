@@ -36,4 +36,13 @@
         android:visibility="gone"
         android:layout_marginTop="16dp"/>
 
+    <!-- Container for the RGBView -->
+    <FrameLayout
+        android:id="@+id/canvasContainer"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginTop="16dp"
+        android:background="@android:color/white" />
+
 </LinearLayout>
