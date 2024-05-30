@@ -1,25 +1,39 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"-->
-<!--    android:layout_width="match_parent"-->
-<!--    android:layout_height="match_parent">-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp"
+    tools:context=".MainActivity">
 
-<!--</androidx.constraintlayout.widget.ConstraintLayout>-->
+    <Button
+        android:id="@+id/btnServer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Server" />
 
-<!--    <?xml version="1.0" encoding="utf-8"?>-->
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-android:layout_width="match_parent"
-android:layout_height="match_parent"
-android:padding="16dp">
+    <Button
+        android:id="@+id/btnClient"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Client"
+        android:layout_marginTop="16dp" />
 
-<!-- TextView to display IP address -->
-<TextView
-    android:id="@+id/ipAddressTextView"
-    android:layout_width="wrap_content"
-    android:layout_height="wrap_content"
-    android:text="IP Address: "
-    android:textSize="18sp"
-    android:textStyle="bold"
-    android:layout_centerInParent="true" />
+    <TextView
+        android:id="@+id/tvServerIp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="Server IP will be displayed here"
+        android:visibility="gone" />
 
-</RelativeLayout>
+    <EditText
+        android:id="@+id/etClientIp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Enter Server IP"
+        android:visibility="gone"
+        android:layout_marginTop="16dp"/>
 
+</LinearLayout>

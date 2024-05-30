@@ -15,9 +15,16 @@ import android.net.wifi.WifiManager
 import android.text.format.Formatter
 import android.widget.TextView
 
+import android.widget.Button
+import android.widget.EditText
+import android.widget.Toast
+
 
 class MainActivity : AppCompatActivity(), SensorEventListener {
-
+    private lateinit var btnServer: Button
+    private lateinit var btnClient: Button
+    private lateinit var tvServerIp: TextView
+    private lateinit var etClientIp: EditText
     private lateinit var sensorManager: SensorManager
     private var accelerometer: Sensor? = null
     private lateinit var rgbView: RGBView
@@ -29,23 +36,54 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        rgbView = RGBView(this, bufferSize = 100) // Buffer size for 10 seconds with updates every 100ms
-        setContentView(rgbView)
 
-        sensorManager = getSystemService(SENSOR_SERVICE) as SensorManager
-        accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+        btnServer = findViewById(R.id.btnServer)
+        btnClient = findViewById(R.id.btnClient)
+        tvServerIp = findViewById(R.id.tvServerIp)
+        etClientIp = findViewById(R.id.etClientIp)
 
-        val ipAddress = getIpAddress()
-        Log.d("MainActivity", "IP Address: $ipAddress")
-//        val ipAddressTextView: TextView = findViewById(R.id.ipAddressTextView)
-//        ipAddressTextView.text = "IP Address: $ipAddress"
-
-        val server = false // Set server to true if you want to start the ServerThread
-        if (server) {
-            ServerThread().start()
-        } else {
-            ClientThread("192.168.1.16", 12345).start() // Provide the server IP address and port
+        btnServer.setOnClickListener {
+            val wifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+            val ipAddress = Formatter.formatIpAddress(wifiManager.connectionInfo.ipAddress)
+            tvServerIp.text = "Server IP: $ipAddress"
+            tvServerIp.visibility = TextView.VISIBLE
+            etClientIp.visibility = EditText.GONE
         }
+
+        btnClient.setOnClickListener {
+            etClientIp.visibility = EditText.VISIBLE
+            tvServerIp.visibility = TextView.GONE
+        }
+
+        etClientIp.setOnEditorActionListener { _, _, _ ->
+            val serverIp = etClientIp.text.toString()
+            if (serverIp.isNotEmpty()) {
+                Toast.makeText(this, "Server IP Entered: $serverIp", Toast.LENGTH_SHORT).show()
+                true
+            } else {
+                Toast.makeText(this, "Please enter a valid IP address", Toast.LENGTH_SHORT).show()
+                false
+            }
+        }
+
+
+//        rgbView = RGBView(this, bufferSize = 100) // Buffer size for 10 seconds with updates every 100ms
+//        setContentView(rgbView)
+//
+//        sensorManager = getSystemService(SENSOR_SERVICE) as SensorManager
+//        accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+//
+//        val ipAddress = getIpAddress()
+//        Log.d("MainActivity", "IP Address: $ipAddress")
+////        val ipAddressTextView: TextView = findViewById(R.id.ipAddressTextView)
+////        ipAddressTextView.text = "IP Address: $ipAddress"
+//
+//        val server = false // Set server to true if you want to start the ServerThread
+//        if (server) {
+//            ServerThread().start()
+//        } else {
+//            ClientThread("192.168.1.16", 12345).start() // Provide the server IP address and port
+//        }
 
     }
 
@@ -105,4 +143,5 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
         // We can ignore this for now
     }
+
 }
