@@ -117,10 +117,13 @@ def test_receiver_live(symbol_map: SymbolMap, receiver: Receiver):
     full_data = bytes()
     recording_event = threading.Event()
     def signal_handler(input_data: bytes, frame_count: int, time_info, status: sd.CallbackFlags):
+        start_time = time.time()
         nonlocal full_data
         nonlocal recording_event
         receiver.receive_buffer(pcm_to_signal(input_data))
         new_message = receiver.get_message()
+        end_time = time.time()
+        # print(f"took {end_time - start_time}")
         if len(new_message) != 0 and new_message[-1] == symbol_map.termination_symbol:
             recording_event.set()
             return None, pyaudio.paComplete
@@ -141,7 +144,7 @@ def test_receiver_live(symbol_map: SymbolMap, receiver: Receiver):
 
     print("Recording...")
     timeout_sec = 10
-    recording_event.wait()
+    recording_event.wait(timeout_sec)
     print("\nStopped recording!")
 
     recorder.terminate()

@@ -62,3 +62,12 @@ def inverse_fft(frequencies_hz: list[float], num_samples: int, sample_rate_hz: f
 
     return sum_of_sin
 
+
+def vec_corrcoef(X, y, axis=1):
+    Xm = np.mean(X, axis=axis, keepdims=True)
+    ym = np.mean(y)
+    n = np.sum((X - Xm) * (y - ym), axis=axis)
+    d = np.sqrt(np.sum((X - Xm) ** 2, axis=axis) * np.sum((y - ym) ** 2))
+    return n / d
+
+

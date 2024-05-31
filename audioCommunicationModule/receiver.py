@@ -2,6 +2,7 @@ import numpy as np
 from OFDM import OFDM
 from symbol import OFDMSymbol
 from typing import Optional
+from utils import *
 
 
 class Receiver(object):
@@ -63,11 +64,10 @@ class Receiver(object):
         self._buffer = np.append(self._buffer, signal)
         self._try_sync()
 
+
     @staticmethod
     def normalized_correlation(signal: np.ndarray, preamble: np.ndarray) -> np.ndarray:
-        if len(signal) < len(preamble):
-            return np.array([])
-        normalized_signal = signal / np.std(signal)
-        normalized_preamble = preamble / np.std(preamble)
+        signal_window = np.lib.stride_tricks.sliding_window_view(signal, len(preamble))
+        correlation = vec_corrcoef(signal_window, preamble)
 
-        return np.correlate(normalized_signal, normalized_preamble, mode='valid') / min(len(signal), len(preamble))
+        return correlation
