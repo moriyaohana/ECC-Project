@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.ndimage.filters import uniform_filter1d
 from matplotlib import pyplot as plt
 
 
@@ -71,3 +72,7 @@ def vec_corrcoef(X, y, axis=1):
     return n / d
 
 
+def rolling_std(data: np.ndarray, window_size: int) -> np.ndarray:
+    rolling_mean = uniform_filter1d(data, window_size, mode='constant', cval=0, origin=-window_size//2)
+    rolling_mean_squares = uniform_filter1d(data*data, window_size, mode='constant', cval=0, origin=-window_size//2)
+    return np.sqrt(rolling_mean_squares - rolling_mean*rolling_mean)[:-window_size + 1]

@@ -6,7 +6,7 @@ from utils import *
 
 
 class Receiver(object):
-    CORRELATION_THRESHOLD = 0.8
+    CORRELATION_THRESHOLD = 0.7
 
     def __init__(self, modulation: OFDM, sync_preamble: list[float]):
         self._modulation = modulation
@@ -64,10 +64,12 @@ class Receiver(object):
         self._buffer = np.append(self._buffer, signal)
         self._try_sync()
 
-
     @staticmethod
     def normalized_correlation(signal: np.ndarray, preamble: np.ndarray) -> np.ndarray:
-        signal_window = np.lib.stride_tricks.sliding_window_view(signal, len(preamble))
-        correlation = vec_corrcoef(signal_window, preamble)
+        if len(signal) < len(preamble):
+            return np.array([])
+        rolling_std_of_signal = rolling_std(signal, len(preamble))
+        normalized_preamble = preamble / np.std(preamble)
+        correlation = np.correlate(signal, normalized_preamble) / (rolling_std_of_signal * len(preamble))
 
         return correlation
