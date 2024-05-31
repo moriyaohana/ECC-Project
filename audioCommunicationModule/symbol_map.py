@@ -53,7 +53,7 @@ class SymbolMap:
         return self._symbol_map[ord(char)]
 
     def symbol_to_char(self, symbol: OFDMSymbol | None) -> str:
-        if symbol is None:
+        if symbol not in self._symbol_map:
             return self.UNRECOGNISED_SYMBOL
         return chr(self._symbol_map.index(symbol))
 

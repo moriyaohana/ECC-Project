@@ -1,4 +1,5 @@
 import random
+import threading
 import time
 
 import pyaudio
@@ -9,6 +10,7 @@ from receiver import Receiver
 from utils import *
 import numpy as np
 import sounddevice as sd
+import wave
 
 default_samples_per_symbol = 4096
 default_frequency_range_start_hz = 500
@@ -19,24 +21,21 @@ default_sample_rate_hz = 16_000
 
 
 def normalized_correlation(signal, preamble):
-    signal_pcm = np.frombuffer(signal, dtype=np.int16)
-    preamble_pcm = np.frombuffer(preamble, dtype=np.int16)
+    normalized_signal = np.array(signal) / np.std(signal)
+    normalized_preamble = np.array(preamble) / np.std(preamble)
 
-    normalized_signal_pcm = signal_pcm / np.std(signal_pcm)
-    normalized_preamble_pcm = preamble_pcm / np.std(preamble_pcm)
-
-    return np.correlate(normalized_signal_pcm, normalized_preamble_pcm, mode='valid')
+    return np.correlate(normalized_signal, normalized_preamble, mode='valid') / min(len(signal), len(preamble))
 
 
 def random_frequencies(frequencies_hz: list[float], num_samples: int, sample_rate_hz: float):
     chunk_size = 64
     preamble = []
     for freq_index, _ in enumerate(range(0, num_samples, chunk_size)):
-        chunk = inverse_fft([frequencies_hz[(3 * freq_index) % len(frequencies_hz)]], chunk_size, sample_rate_hz)
+        chunk = inverse_fft([random.choice(frequencies_hz)], chunk_size, sample_rate_hz)
         preamble += chunk
 
     remainder = num_samples - len(preamble)
-    preamble += inverse_fft([frequencies_hz[-1]], remainder, sample_rate_hz)
+    preamble += inverse_fft([random.choice(frequencies_hz)], remainder, sample_rate_hz)
 
     return preamble
 
@@ -52,7 +51,10 @@ def test_receiver():
         default_frequency_range_end_hz
     )
 
-    preamble = random_frequencies(modulation.frequencies_hz, 4096, modulation.sample_rate_hz)
+    preamble = random_frequencies(
+        modulation.frequencies_hz,
+        4096,
+        modulation.sample_rate_hz)
 
     receiver = Receiver(modulation, preamble)
 
@@ -63,7 +65,7 @@ def test_receiver():
                                     default_symbol_weight,
                                     default_sample_rate_hz)
 
-    message_signal = pcm_to_signal(text_over_sound.string_to_pcm_data("Daniel"))
+    message_signal = pcm_to_signal(text_over_sound.string_to_pcm_data("Moriya"))
 
     noise_size = int(2.7 * len(preamble))
     noise = [random.choice([-1, 1]) * random.random() for _ in range(noise_size)]
@@ -79,8 +81,16 @@ def test_receiver():
 
 
 def load_audio_file(path: str) -> bytes:
-    with open(path, "rb") as audio_file:
-        return audio_file.read()
+    with wave.open(path, "rb") as audio_file:
+        return audio_file.readframes(audio_file.getnframes())
+
+
+def store_audio_file(path: str, pcm_data: bytes):
+    with wave.open(path, "wb") as audio_file:
+        audio_file.setnchannels(1)
+        audio_file.setsampwidth(2)
+        audio_file.setframerate(default_sample_rate_hz)
+        audio_file.writeframesraw(pcm_data)
 
 
 def test_recorded_file(receiver: Receiver, symbol_map: SymbolMap, path: str):
@@ -105,18 +115,16 @@ def test_recorded_file(receiver: Receiver, symbol_map: SymbolMap, path: str):
 
 def test_receiver_live(symbol_map: SymbolMap, receiver: Receiver):
     full_data = bytes()
-    message = list()
-    # noinspection PyUnusedLocal
+    recording_event = threading.Event()
     def signal_handler(input_data: bytes, frame_count: int, time_info, status: sd.CallbackFlags):
         nonlocal full_data
-        nonlocal message
+        nonlocal recording_event
         receiver.receive_buffer(pcm_to_signal(input_data))
         new_message = receiver.get_message()
-        if len(new_message) > len(message):
-            if new_message[-1] == symbol_map.termination_symbol:
-                return None, pyaudio.paAbort
-            print(symbol_map.symbols_to_string(new_message[len(message):]), end='')
-            message = new_message
+        if len(new_message) != 0 and new_message[-1] == symbol_map.termination_symbol:
+            recording_event.set()
+            return None, pyaudio.paComplete
+        print(symbol_map.symbols_to_string(new_message))
         full_data += input_data
 
         return None, pyaudio.paContinue
@@ -132,10 +140,12 @@ def test_receiver_live(symbol_map: SymbolMap, receiver: Receiver):
                   stream_callback=signal_handler)
 
     print("Recording...")
-    sd.sleep(10000)
+    timeout_sec = 10
+    recording_event.wait()
     print("\nStopped recording!")
 
     recorder.terminate()
+    message_signal = pcm_to_signal(full_data)
     print(symbol_map.symbols_to_string(receiver.get_message()))
 
 
@@ -187,10 +197,14 @@ def main():
     # preamble = random_frequencies(modulation.frequencies_hz, 4096, modulation.sample_rate_hz)
     preamble = modulation.symbol_to_signal(symbol_map.sync_symbol)
 
+    test_signal = 3 * preamble + modulation.symbols_to_signal(symbol_map.string_to_symbols("Moriya is here")) + modulation.symbol_to_signal(symbol_map.termination_symbol)
+    # store_audio_file("sample<N>.wav", signal_to_pcm(test_signal))
+
     receiver = Receiver(modulation, preamble)
 
-    # test_receiver_live(symbol_map, receiver)
-    test_recorded_file(receiver, symbol_map, "test_out.wav")
+    # test_receiver()
+    # test_recorded_file(receiver, symbol_map, "test_out.wav")
+    test_receiver_live(symbol_map, receiver)
 
 
 if __name__ == '__main__':
