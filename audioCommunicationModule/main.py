@@ -11,6 +11,7 @@ from utils import *
 import numpy as np
 import sounddevice as sd
 import wave
+import reedsolo
 
 default_samples_per_symbol = 4096
 default_frequency_range_start_hz = 500
@@ -113,9 +114,22 @@ def test_recorded_file(receiver: Receiver, symbol_map: SymbolMap, path: str):
     print(message)
 
 
-def decode_string(data: bytes, erasures: set[int], default_char: str = "_"):
+def decode_string(data: bytes, erasures: set[int], default_char: str = "_", should_correct=False):
     decoded_data = data.decode("utf-8", errors="replace")
-    return "".join(default_char if index in erasures else char for index, char in enumerate(decoded_data))
+    org = "".join(default_char if index in erasures else char for index, char in enumerate(decoded_data))
+    if not should_correct:
+        return org
+    rscode = reedsolo.RSCodec(10)
+    corrected_message, _, errata = rscode.decode(data, erase_pos=erasures)
+    print(f"org: {org}")
+    print(f"cor: {corrected_message}")
+    return corrected_message.decode("utf-8")
+
+
+def encode_string(string: str):
+    byte_data = string.encode("utf-8")
+    rscode = reedsolo.RSCodec(10)
+    return rscode.encode(byte_data)
 
 
 def test_receiver_live(symbol_map: SymbolMap, receiver: Receiver):
@@ -149,14 +163,14 @@ def test_receiver_live(symbol_map: SymbolMap, receiver: Receiver):
                   stream_callback=signal_handler)
 
     print("Recording...")
-    timeout_sec = 10
+    timeout_sec = 15
     recording_event.wait(timeout_sec)
     print("\nStopped recording!")
 
     recorder.terminate()
     message_signal = pcm_to_signal(full_data)
     data, erasures = receiver.get_message_data()
-    print(f"final message: {decode_string(data, erasures)} with {len(erasures)} erasures")
+    print(f"final message: {decode_string(data, erasures, should_correct=True)} with {len(erasures)} erasures")
 
 
 def play_pcm(pcm: bytes, sample_rate_hz: float):
@@ -196,10 +210,13 @@ def main():
                         default_frequency_range_end_hz,
                         snr_threshold=2)
 
+    message = "Moriya is here"
+    encoded_message = encode_string(message)
+    print(f"Transmitting: {encoded_message}")
     test_signal = 3 * receiver.preamble + receiver._modulation.symbols_to_signal(
-        symbol_map.bytes_to_symbols("Moriya is here".encode())) + receiver._modulation.symbols_to_signal(
+        symbol_map.bytes_to_symbols(encoded_message)) + receiver._modulation.symbols_to_signal(
         symbol_map.termination_symbol)
-    # store_audio_file("sample<N>.wav", signal_to_pcm(test_signal))
+    #store_audio_file("sample10.wav", signal_to_pcm(test_signal))
 
     # test_receiver()
     # test_recorded_file(receiver, symbol_map, "test_out.wav")

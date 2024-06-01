@@ -5,8 +5,6 @@ from utils import *
 
 
 class Receiver(object):
-    CORRELATION_THRESHOLD = 0.7
-
     def __init__(self,
                  symbol_weight: int,
                  symbol_size: int,
@@ -14,7 +12,9 @@ class Receiver(object):
                  sample_rate_hz: float,
                  frequency_range_start_hz: float,
                  frequency_range_end_hz: float,
-                 snr_threshold: float = 1):
+                 snr_threshold: float = 1,
+                 correlation_threshold: float = 0.7):
+
         self._modulation = OFDM(symbol_weight,
                                 symbol_size,
                                 samples_per_symbol,
@@ -27,6 +27,7 @@ class Receiver(object):
         self._preamble_offset: int = 0
         self._last_sync_location: int = 0
         self._sync_score: int = 0
+        self._correlation_threshold: float = correlation_threshold
 
     @property
     def preamble(self) -> list[float]:
@@ -38,7 +39,7 @@ class Receiver(object):
         if len(correlation) == 0:
             return None, None
         peak_value = np.max(correlation)
-        if peak_value > self.CORRELATION_THRESHOLD:
+        if peak_value > self._correlation_threshold:
             return np.argmax(correlation), max(correlation)
 
         return None, None
