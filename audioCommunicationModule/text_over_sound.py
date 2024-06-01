@@ -51,10 +51,10 @@ class TextOverSound:
         return pcm_data
 
     def char_to_pcm_data(self, char: str) -> bytes:
-        return signal_to_pcm(self._modulation.symbol_to_signal(self._char_symbol_map.char_to_symbol(char)))
+        return signal_to_pcm(self._modulation._symbol_to_signal(self._char_symbol_map.char_to_symbol(char)))
 
     def pcm_to_char(self, pcm_data: bytes) -> str:
-        return self._char_symbol_map.symbol_to_char(self._modulation.signal_to_symbol(pcm_to_signal(pcm_data)))
+        return self._char_symbol_map.symbol_to_char(self._modulation._signal_to_symbol(pcm_to_signal(pcm_data)))
 
     def pcm_to_string(self, pcm_data: bytes) -> str:
         message = str()

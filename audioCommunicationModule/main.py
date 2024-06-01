@@ -76,7 +76,7 @@ def test_receiver():
         chunk = final_test_signal[chunk_index:chunk_index + default_samples_per_symbol]
         receiver.receive_buffer(chunk)
 
-    message = symbol_map.symbols_to_string(receiver.get_message())
+    message = symbol_map.symbols_to_string(receiver.get_message_symbols())
     print(message)
 
 
@@ -100,7 +100,7 @@ def test_recorded_file(receiver: Receiver, symbol_map: SymbolMap, path: str):
     chunk_size = receiver._modulation.num_samples
     for chunk_index in range(0, len(audio_signal), chunk_size):
         if receiver._is_synced:
-            print(symbol_map.symbols_to_string(receiver.get_message()))
+            print(symbol_map.symbols_to_string(receiver.get_message_symbols()))
 
         start_time = time.time()
         receiver.receive_buffer(audio_signal[chunk_index:chunk_index + chunk_size])
@@ -109,25 +109,31 @@ def test_recorded_file(receiver: Receiver, symbol_map: SymbolMap, path: str):
             f"receive took {end_time - start_time} seconds. "
             f"block duration is {default_samples_per_symbol / default_samples_per_symbol} seconds")
 
-    message = symbol_map.symbols_to_string(receiver.get_message())
+    message = symbol_map.symbols_to_string(receiver.get_message_symbols())
     print(message)
+
+
+def decode_string(data: bytes, erasures: set[int], default_char: str = "_"):
+    decoded_data = data.decode("utf-8", errors="replace")
+    return "".join(default_char if index in erasures else char for index, char in enumerate(decoded_data))
 
 
 def test_receiver_live(symbol_map: SymbolMap, receiver: Receiver):
     full_data = bytes()
     recording_event = threading.Event()
+
     def signal_handler(input_data: bytes, frame_count: int, time_info, status: sd.CallbackFlags):
         start_time = time.time()
         nonlocal full_data
         nonlocal recording_event
         receiver.receive_buffer(pcm_to_signal(input_data))
-        new_message = receiver.get_message()
+        new_message_symbols = receiver.get_message_symbols()
         end_time = time.time()
         # print(f"took {end_time - start_time}")
-        if len(new_message) != 0 and new_message[-1] == symbol_map.termination_symbol:
+        if len(new_message_symbols) != 0 and new_message_symbols[-1] == symbol_map.termination_symbol:
             recording_event.set()
             return None, pyaudio.paComplete
-        print(symbol_map.symbols_to_string(new_message))
+        print(decode_string(*receiver.get_message_data()))
         full_data += input_data
 
         return None, pyaudio.paContinue
@@ -149,7 +155,8 @@ def test_receiver_live(symbol_map: SymbolMap, receiver: Receiver):
 
     recorder.terminate()
     message_signal = pcm_to_signal(full_data)
-    print(symbol_map.symbols_to_string(receiver.get_message()))
+    data, erasures = receiver.get_message_data()
+    print(f"final message: {decode_string(data, erasures)} with {len(erasures)} erasures")
 
 
 def play_pcm(pcm: bytes, sample_rate_hz: float):
@@ -180,30 +187,19 @@ def play_test_data(text_over_sound: TextOverSound, message: str, preamble: list[
 
 def main():
     symbol_map = SymbolMap(default_symbol_size, default_symbol_weight)
-    modulation = OFDM(
-        default_symbol_weight,
-        default_symbol_size,
-        default_samples_per_symbol,
-        default_sample_rate_hz,
-        default_frequency_range_start_hz,
-        default_frequency_range_end_hz
-    )
 
-    # noinspection PyUnusedLocal
-    text_over_sound = TextOverSound(default_samples_per_symbol,
-                                    default_frequency_range_start_hz,
-                                    default_frequency_range_end_hz,
-                                    default_symbol_size,
-                                    default_symbol_weight,
-                                    default_sample_rate_hz)
+    receiver = Receiver(default_symbol_weight,
+                        default_symbol_size,
+                        default_samples_per_symbol,
+                        default_sample_rate_hz,
+                        default_frequency_range_start_hz,
+                        default_frequency_range_end_hz,
+                        snr_threshold=2)
 
-    # preamble = random_frequencies(modulation.frequencies_hz, 4096, modulation.sample_rate_hz)
-    preamble = modulation.symbol_to_signal(symbol_map.sync_symbol)
-
-    test_signal = 3 * preamble + modulation.symbols_to_signal(symbol_map.string_to_symbols("Moriya is here")) + modulation.symbol_to_signal(symbol_map.termination_symbol)
+    test_signal = 3 * receiver.preamble + receiver._modulation.symbols_to_signal(
+        symbol_map.bytes_to_symbols("Moriya is here".encode())) + receiver._modulation.symbols_to_signal(
+        symbol_map.termination_symbol)
     # store_audio_file("sample<N>.wav", signal_to_pcm(test_signal))
-
-    receiver = Receiver(modulation, preamble)
 
     # test_receiver()
     # test_recorded_file(receiver, symbol_map, "test_out.wav")
