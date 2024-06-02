@@ -3,7 +3,6 @@ import threading
 import time
 
 import pyaudio
-from text_over_sound import TextOverSound
 from symbol_map import SymbolMap
 from OFDM import OFDM
 from receiver import Receiver
@@ -41,46 +40,6 @@ def random_frequencies(frequencies_hz: list[float], num_samples: int, sample_rat
     return preamble
 
 
-def test_receiver():
-    symbol_map = SymbolMap(default_symbol_size, default_symbol_weight)
-    modulation = OFDM(
-        default_symbol_weight,
-        default_symbol_size,
-        default_samples_per_symbol,
-        default_sample_rate_hz,
-        default_frequency_range_start_hz,
-        default_frequency_range_end_hz
-    )
-
-    preamble = random_frequencies(
-        modulation.frequencies_hz,
-        4096,
-        modulation.sample_rate_hz)
-
-    receiver = Receiver(modulation, preamble)
-
-    text_over_sound = TextOverSound(default_samples_per_symbol,
-                                    default_frequency_range_start_hz,
-                                    default_frequency_range_end_hz,
-                                    default_symbol_size,
-                                    default_symbol_weight,
-                                    default_sample_rate_hz)
-
-    message_signal = pcm_to_signal(text_over_sound.string_to_pcm_data("Moriya"))
-
-    noise_size = int(2.7 * len(preamble))
-    noise = [random.choice([-1, 1]) * random.random() for _ in range(noise_size)]
-
-    final_test_signal = noise + preamble + message_signal
-
-    for chunk_index in range(0, len(final_test_signal), default_samples_per_symbol):
-        chunk = final_test_signal[chunk_index:chunk_index + default_samples_per_symbol]
-        receiver.receive_buffer(chunk)
-
-    message = symbol_map.symbols_to_string(receiver.get_message_symbols())
-    print(message)
-
-
 def load_audio_file(path: str) -> bytes:
     with wave.open(path, "rb") as audio_file:
         return audio_file.readframes(audio_file.getnframes())
@@ -98,7 +57,7 @@ def test_recorded_file(receiver: Receiver, symbol_map: SymbolMap, path: str):
     audio_data = load_audio_file(path)
     audio_signal = pcm_to_signal(audio_data)
 
-    chunk_size = receiver._modulation.num_samples
+    chunk_size = receiver._modulation.samples_per_symbol
     for chunk_index in range(0, len(audio_signal), chunk_size):
         if receiver._is_synced:
             print(symbol_map.symbols_to_string(receiver.get_message_symbols()))
@@ -120,10 +79,15 @@ def decode_string(data: bytes, erasures: set[int], default_char: str = "_", shou
     if not should_correct:
         return org
     rscode = reedsolo.RSCodec(10)
-    corrected_message, _, errata = rscode.decode(data, erase_pos=erasures)
+
+    try:
+        corrected_message, _, errata = rscode.decode(data, erase_pos=erasures)
+    except ...:
+        print("No errors corrected! Either too many errors, or no errors at all")
+        corrected_message = org
     print(f"org: {org}")
     print(f"cor: {corrected_message}")
-    return corrected_message.decode("utf-8")
+    return corrected_message.decode("utf-8", errors="replace")
 
 
 def encode_string(string: str):
@@ -143,7 +107,7 @@ def test_receiver_live(symbol_map: SymbolMap, receiver: Receiver):
         receiver.receive_buffer(pcm_to_signal(input_data))
         new_message_symbols = receiver.get_message_symbols()
         end_time = time.time()
-        # print(f"took {end_time - start_time}")
+        # print(f"took {end_time - start_time} secs")
         if len(new_message_symbols) != 0 and new_message_symbols[-1] == symbol_map.termination_symbol:
             recording_event.set()
             return None, pyaudio.paComplete
@@ -168,7 +132,7 @@ def test_receiver_live(symbol_map: SymbolMap, receiver: Receiver):
     print("\nStopped recording!")
 
     recorder.terminate()
-    message_signal = pcm_to_signal(full_data)
+    message_signal = np.array(pcm_to_signal(full_data))
     data, erasures = receiver.get_message_data()
     print(f"final message: {decode_string(data, erasures, should_correct=True)} with {len(erasures)} erasures")
 
@@ -194,11 +158,6 @@ def play_pcm(pcm: bytes, sample_rate_hz: float):
     playback.terminate()
 
 
-def play_test_data(text_over_sound: TextOverSound, message: str, preamble: list[float]):
-    pcm_data = signal_to_pcm(preamble) + text_over_sound.string_to_pcm_data(message)
-    play_pcm(pcm_data, default_sample_rate_hz)
-
-
 def main():
     symbol_map = SymbolMap(default_symbol_size, default_symbol_weight)
 
@@ -213,12 +172,11 @@ def main():
     message = "Moriya is here"
     encoded_message = encode_string(message)
     print(f"Transmitting: {encoded_message}")
-    test_signal = 3 * receiver.preamble + receiver._modulation.symbols_to_signal(
-        symbol_map.bytes_to_symbols(encoded_message)) + receiver._modulation.symbols_to_signal(
+    test_signal = 3 * receiver.sync_preamble + receiver._modulation.data_to_signal(
+        encoded_message) + receiver._modulation.symbols_to_signal(
         symbol_map.termination_symbol)
-    #store_audio_file("sample10.wav", signal_to_pcm(test_signal))
+    # store_audio_file("sample10.wav", signal_to_pcm(test_signal))
 
-    # test_receiver()
     # test_recorded_file(receiver, symbol_map, "test_out.wav")
     test_receiver_live(symbol_map, receiver)
 

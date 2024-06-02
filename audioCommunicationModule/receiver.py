@@ -30,7 +30,7 @@ class Receiver(object):
         self._correlation_threshold: float = correlation_threshold
 
     @property
-    def preamble(self) -> list[float]:
+    def sync_preamble(self) -> list[float]:
         return self._modulation.sync_preamble
 
     def _detect_preamble(self) -> tuple[int, float] | tuple[None, None]:
@@ -44,23 +44,24 @@ class Receiver(object):
 
         return None, None
 
-    def resync(self, new_sync_location: int, new_sync_score: int):
-        if new_sync_location > self._sync_score:
+    def _resync(self, new_sync_location: int, new_sync_score: int):
+        if new_sync_score > self._sync_score:
             self._sync_score = new_sync_score
-            self._last_sync_location = new_sync_location
+            self._last_sync_location = min(new_sync_location + len(self._modulation.sync_preamble),
+                                           len(self._buffer))
             self._buffer = self._buffer[new_sync_location + len(self._modulation.sync_preamble):]
 
     def _try_sync(self):
         preamble_location, sync_score = self._detect_preamble()
         if preamble_location is None:
             if not self._is_synced:
-                buffer_size_to_keep = 2 * self._modulation.num_samples
+                buffer_size_to_keep = 2 * self._modulation.samples_per_symbol
                 self._buffer = self._buffer[-buffer_size_to_keep:]
 
             return
 
         if self._is_synced:
-            return self.resync(preamble_location, sync_score)
+            return self._resync(preamble_location, sync_score)
 
         self._is_synced = True
         self._sync_score = sync_score

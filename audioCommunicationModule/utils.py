@@ -12,6 +12,7 @@ def signal_to_pcm(signal: list[float]) -> bytes:
 
     return pcm_data.tobytes()
 
+
 def pcm_to_signal(pcm_data: bytes) -> list[float]:
     pcm_array = np.frombuffer(pcm_data, dtype=np.int16)
 
@@ -62,14 +63,6 @@ def inverse_fft(frequencies_hz: list[float], num_samples: int, sample_rate_hz: f
         sum_of_sin.append(sample)
 
     return sum_of_sin
-
-
-def vec_corrcoef(X, y, axis=1):
-    Xm = np.mean(X, axis=axis, keepdims=True)
-    ym = np.mean(y)
-    n = np.sum((X - Xm) * (y - ym), axis=axis)
-    d = np.sqrt(np.sum((X - Xm) ** 2, axis=axis) * np.sum((y - ym) ** 2))
-    return n / d
 
 
 def rolling_std(data: np.ndarray, window_size: int) -> np.ndarray:

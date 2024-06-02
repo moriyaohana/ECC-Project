@@ -1,3 +1,4 @@
+# noinspection PyUnresolvedReferences
 import numpy as np
 from typing import Optional
 from symbol import OFDMSymbol
@@ -6,7 +7,6 @@ from utils import *
 
 
 class OFDM(object):
-
     def __init__(self,
                  symbol_weight: int,
                  symbol_size: int,
@@ -22,7 +22,7 @@ class OFDM(object):
         self._frequency_range_start_hz = frequency_range_start_hz
         self._frequency_range_end_hz = frequency_range_end_hz
         self._duration_sec = samples_per_symbol / sample_rate_hz
-        self._frequencies = self.get_frequencies(
+        self._frequencies = self._get_frequencies(
             frequency_range_start_hz,
             frequency_range_end_hz,
             symbol_size,
@@ -33,7 +33,7 @@ class OFDM(object):
         self._sync_preamble = self.symbols_to_signal(self._symbol_map.sync_symbol)
 
     @property
-    def num_samples(self):
+    def samples_per_symbol(self):
         return self._samples_per_symbol
 
     @property
@@ -53,8 +53,8 @@ class OFDM(object):
         return self._symbol_map.termination_symbol
 
     @staticmethod
-    def get_step(start_range_hz: float, end_range_hz: float, symbol_size: int, sample_rate_hz: float,
-                 num_samples: int) -> float:
+    def _get_step(start_range_hz: float, end_range_hz: float, symbol_size: int, sample_rate_hz: float,
+                  num_samples: int) -> float:
         diff = sample_rate_hz / num_samples
         i = 1
         step = 0
@@ -66,19 +66,19 @@ class OFDM(object):
         return step - diff
 
     @staticmethod
-    def get_frequencies(start_range_hz: float, end_range_hz: float, symbol_size: int, sample_rate_hz: float,
-                        num_samples: int) -> list[float]:
+    def _get_frequencies(start_range_hz: float, end_range_hz: float, symbol_size: int, sample_rate_hz: float,
+                         num_samples: int) -> list[float]:
         if symbol_size <= 1:
             raise ValueError("The size of the array (symbol_size) must be greater than 1.")
 
-        step = OFDM.get_step(start_range_hz, end_range_hz, symbol_size, sample_rate_hz, num_samples)
+        step = OFDM._get_step(start_range_hz, end_range_hz, symbol_size, sample_rate_hz, num_samples)
 
         # Use a list comprehension to generate the array
         frequencies = [start_range_hz + index * step for index in range(symbol_size)]
 
         return frequencies
 
-    def top_frequencies(self, signal: list[float]) -> list[tuple[float, float]]:
+    def _top_frequencies(self, signal: list[float]) -> list[tuple[float, float]]:
         frequencies = signal_fft(signal, self._sample_rate_hz)
         frequencies = [(freq, amp) for freq, amp in frequencies if freq in self._frequencies]
 
@@ -91,9 +91,8 @@ class OFDM(object):
         if len(signal) != self._samples_per_symbol:
             raise RuntimeError('Unexpected signal length.'
                                f'Expected {self._samples_per_symbol} but got {len(signal)}')
-        top_frequencies = self.top_frequencies(signal)
-        if len(top_frequencies) < self._symbol_weight:
-            return None
+        top_frequencies = self._top_frequencies(signal)
+
         MAGNITUDE_INDEX = 1
         if (top_frequencies[self._symbol_weight - 1][MAGNITUDE_INDEX] /
                 top_frequencies[self._symbol_weight][MAGNITUDE_INDEX] < self._snr_threshold):

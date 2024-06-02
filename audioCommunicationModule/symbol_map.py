@@ -4,13 +4,12 @@ from symbol import OFDMSymbol
 
 class SymbolMap:
     UNRECOGNISED_SYMBOL = 0xFF
-
     """
-        construct the mapping between bytes and symbols.
-        :param symbol_size: is the size of the symbol binary vector
-        :param symbol_size: the size of the symbol binary vector
-        :param symbol_weight: the required weight of each symbol binary vector,
-                the number of '1' bits in the vector.
+    construct the mapping between bytes and symbols.
+    :param symbol_size: is the size of the symbol binary vector
+    :param symbol_size: the size of the symbol binary vector
+    :param symbol_weight: the required weight of each symbol binary vector,
+            the number of '1' bits in the vector.
     """
 
     def __init__(
@@ -27,7 +26,6 @@ class SymbolMap:
             symbol_weight)
         self._character_space_size = character_space_size
         self._sync_symbol = self._symbol_map[character_space_size]
-        #self._sync_symbol = OFDMSymbol({0, 2, 4, 6, 8, 10, 12, 14})
         self._termination_symbol = self._symbol_map[character_space_size + 1]
 
     @property
