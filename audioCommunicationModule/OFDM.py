@@ -140,7 +140,7 @@ class OFDM(object):
                 continue
             assert len(correlation) == 1
             correlation = correlation[0]
-            if correlation < 0.7 or removed > 2:
+            if correlation < 0.7 or removed > 3:
                 new_signal += signal_chunk
             removed += 1
 
