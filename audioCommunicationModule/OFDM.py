@@ -1,5 +1,3 @@
-import random
-
 # noinspection PyUnresolvedReferences
 import numpy as np
 from typing import Optional

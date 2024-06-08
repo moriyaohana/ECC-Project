@@ -177,7 +177,7 @@ def main():
                         default_frequency_range_start_hz,
                         default_frequency_range_end_hz,
                         snr_threshold=1.5,
-                        correlation_threshold=0.4)
+                        correlation_threshold=0.8)
 
     message = "Moriya is here doing a project"
     encoded_message = encode_string(message)
@@ -192,5 +192,4 @@ def main():
 
 
 if __name__ == '__main__':
-    random.seed(42)
     main()
