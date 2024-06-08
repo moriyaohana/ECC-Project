@@ -28,13 +28,21 @@ class Receiver(object):
         self._last_sync_location: int = 0
         self._sync_score: int = 0
         self._correlation_threshold: float = correlation_threshold
+        self._preamble_retries = 0
 
     @property
     def sync_preamble(self) -> list[float]:
         return self._modulation.sync_preamble
 
+    @property
+    def last_symbol(self) -> None | OFDMSymbol:
+        if not self._is_synced or len(self._buffer) < 4096:
+            return None
+
+        return self._modulation.signal_to_symbols(self._buffer[-4096:])[0]
+
     def _detect_preamble(self) -> tuple[int, float] | tuple[None, None]:
-        correlation = self.normalized_correlation(np.array(self._buffer[self._last_sync_location:]),
+        correlation = normalized_correlation(np.array(self._buffer[self._last_sync_location:]),
                                                   np.array(self._modulation.sync_preamble))
         if len(correlation) == 0:
             return None, None
@@ -52,6 +60,12 @@ class Receiver(object):
             self._buffer = self._buffer[new_sync_location + len(self._modulation.sync_preamble):]
 
     def _try_sync(self):
+        if self._preamble_retries >= 3:
+            return
+
+        if self._is_synced:
+            self._preamble_retries += 1
+
         preamble_location, sync_score = self._detect_preamble()
         if preamble_location is None:
             if not self._is_synced:
@@ -86,13 +100,3 @@ class Receiver(object):
             self._preamble_offset = 0
         self._buffer = np.append(self._buffer, signal)
         self._try_sync()
-
-    @staticmethod
-    def normalized_correlation(signal: np.ndarray, preamble: np.ndarray) -> np.ndarray:
-        if len(signal) < len(preamble):
-            return np.array([])
-        rolling_std_of_signal = rolling_std(signal, len(preamble))
-        normalized_preamble = preamble / np.std(preamble)
-        correlation = np.correlate(signal, normalized_preamble) / (rolling_std_of_signal * len(preamble))
-
-        return correlation

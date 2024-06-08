@@ -77,3 +77,20 @@ def rolling_std(data: np.ndarray, window_size: int) -> np.ndarray:
                                             cval=0,
                                             origin=-window_size//2)
     return np.sqrt(rolling_mean_squares - rolling_mean*rolling_mean)[:-window_size + 1]
+
+
+# TODO: For the Chirp Signal we get a correlation above 1, which is concerning
+def normalized_correlation(signal: np.ndarray | list, preamble: np.ndarray | list) -> np.ndarray:
+    if not isinstance(signal, np.ndarray):
+        signal = np.array(signal)
+
+    if not isinstance(preamble, np.ndarray):
+        preamble = np.array(preamble)
+
+    if len(signal) < len(preamble):
+        return np.array([])
+    rolling_std_of_signal = rolling_std(signal, len(preamble))
+    normalized_preamble = preamble / np.std(preamble)
+    correlation = np.correlate(signal, normalized_preamble) / (rolling_std_of_signal * len(preamble))
+
+    return correlation
