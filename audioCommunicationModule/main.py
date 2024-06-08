@@ -13,11 +13,13 @@ import wave
 import reedsolo
 
 default_samples_per_symbol = 4096
-default_frequency_range_start_hz = 500
-default_frequency_range_end_hz = 5_000
+default_frequency_range_start_hz = 2_000
+default_frequency_range_end_hz = 4_000
 default_symbol_size = 16
 default_symbol_weight = 3
 default_sample_rate_hz = 16_000
+default_nsym = 5
+default_nsize = 15
 
 
 def normalized_correlation(signal, preamble):
@@ -78,40 +80,46 @@ def decode_string(data: bytes, erasures: set[int], default_char: str = "_", shou
     org = "".join(default_char if index in erasures else char for index, char in enumerate(decoded_data))
     if not should_correct:
         return org
-    rscode = reedsolo.RSCodec(10)
+    rscode = reedsolo.RSCodec(nsym=default_nsym, nsize=default_nsize)
+    corrected_message = org
+    try:
+        corrected_message, _, errata = rscode.decode(data, erase_pos=erasures, only_erasures=True)
+    except reedsolo.ReedSolomonError:
+        print(f"No errors corrected by only correcting erasures! Erasures: {len(erasures)}")
 
     try:
         corrected_message, _, errata = rscode.decode(data, erase_pos=erasures)
-    except ...:
-        print("No errors corrected! Either too many errors, or no errors at all")
-        corrected_message = org
+    except reedsolo.ReedSolomonError:
+        print(f"No errors corrected even when attempting to correct errors and erasures")
+
     print(f"org: {org}")
     print(f"cor: {corrected_message}")
-    return corrected_message.decode("utf-8", errors="replace")
+    return corrected_message
 
 
 def encode_string(string: str):
     byte_data = string.encode("utf-8")
-    rscode = reedsolo.RSCodec(10)
+    rscode = reedsolo.RSCodec(nsym=default_nsym, nsize=default_nsize)
     return rscode.encode(byte_data)
 
 
 def test_receiver_live(symbol_map: SymbolMap, receiver: Receiver):
     full_data = bytes()
     recording_event = threading.Event()
-
+    received_message = []
     def signal_handler(input_data: bytes, frame_count: int, time_info, status: sd.CallbackFlags):
         start_time = time.time()
         nonlocal full_data
         nonlocal recording_event
         receiver.receive_buffer(pcm_to_signal(input_data))
-        new_message_symbols = receiver.get_message_symbols()
+        if receiver.last_symbol is not None:
+            print(symbol_map.symbols_to_bytes([receiver.last_symbol])[0].decode('ascii', errors='ignore'), end='')
         end_time = time.time()
         # print(f"took {end_time - start_time} secs")
-        if len(new_message_symbols) != 0 and new_message_symbols[-1] == symbol_map.termination_symbol:
+        if receiver.last_symbol == symbol_map.termination_symbol:
             recording_event.set()
             return None, pyaudio.paComplete
-        print(decode_string(*receiver.get_message_data()))
+        # print(decode_string(*symbol_map.symbols_to_bytes(new_message_symbols)))
         full_data += input_data
 
         return None, pyaudio.paContinue
@@ -127,14 +135,15 @@ def test_receiver_live(symbol_map: SymbolMap, receiver: Receiver):
                   stream_callback=signal_handler)
 
     print("Recording...")
-    timeout_sec = 15
+    timeout_sec = 40
     recording_event.wait(timeout_sec)
     print("\nStopped recording!")
 
     recorder.terminate()
     message_signal = np.array(pcm_to_signal(full_data))
     data, erasures = receiver.get_message_data()
-    print(f"final message: {decode_string(data, erasures, should_correct=True)} with {len(erasures)} erasures")
+    print(f"final message: '{decode_string(data, erasures, should_correct=True)}' with {len(erasures)} erasures")
+    return
 
 
 def play_pcm(pcm: bytes, sample_rate_hz: float):
@@ -167,19 +176,21 @@ def main():
                         default_sample_rate_hz,
                         default_frequency_range_start_hz,
                         default_frequency_range_end_hz,
-                        snr_threshold=2)
+                        snr_threshold=1.5,
+                        correlation_threshold=0.4)
 
-    message = "Moriya is here"
+    message = "Moriya is here doing a project"
     encoded_message = encode_string(message)
     print(f"Transmitting: {encoded_message}")
     test_signal = 3 * receiver.sync_preamble + receiver._modulation.data_to_signal(
         encoded_message) + receiver._modulation.symbols_to_signal(
         symbol_map.termination_symbol)
-    # store_audio_file("sample10.wav", signal_to_pcm(test_signal))
+    # store_audio_file("samples\\sample21.wav", signal_to_pcm(test_signal))
 
     # test_recorded_file(receiver, symbol_map, "test_out.wav")
     test_receiver_live(symbol_map, receiver)
 
 
 if __name__ == '__main__':
+    random.seed(42)
     main()
