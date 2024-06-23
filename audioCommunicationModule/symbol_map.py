@@ -1,4 +1,6 @@
 from itertools import combinations
+from typing import Optional
+
 from symbol import OFDMSymbol
 
 
@@ -47,12 +49,12 @@ class SymbolMap:
 
         return symbols
 
-    def _byte_to_symbol(self, byte: int) -> OFDMSymbol | None:
+    def _byte_to_symbol(self, byte: int) -> Optional[OFDMSymbol]:
         if byte >= self._character_space_size:
             return None
         return self._symbol_map[byte]
 
-    def _symbol_to_value(self, symbol: OFDMSymbol | None) -> int | None:
+    def _symbol_to_value(self, symbol: Optional[OFDMSymbol]) -> Optional[int]:
         if symbol not in self._symbol_map:
             return None
         return self._symbol_map.index(symbol)

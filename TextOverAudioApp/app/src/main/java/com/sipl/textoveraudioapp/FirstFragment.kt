@@ -27,8 +27,8 @@ class FirstFragment : Fragment() {
     private val binding get() = _binding!!
 
     override fun onCreateView(
-            inflater: LayoutInflater, container: ViewGroup?,
-            savedInstanceState: Bundle?
+        inflater: LayoutInflater, container: ViewGroup?,
+        savedInstanceState: Bundle?
     ): View {
 
         _binding = FragmentFirstBinding.inflate(inflater, container, false)
@@ -42,21 +42,64 @@ class FirstFragment : Fragment() {
         val python: Python = Python.getInstance()
 
         //initialization
-        val textOverSoundModule: PyObject = python.getModule("text_over_sound")
-        val textOverSound: PyObject = textOverSoundModule.callAttr("TextOverSound",250, 10, 20, 16, 3, 16)
+        val mainModule: PyObject = python.getModule("transmitter")
+        val messageToSound: PyObject = mainModule.callAttr("create_transmitter")
 
         //event: the user sending a message
         binding.sendMessage.setOnClickListener {
+
             val inputText: String = binding.messageInput.text.toString()
-            messageToSound(textOverSound, inputText, 16000)
+            val byteArray = messageToSound.call(inputText).toJava(ByteArray::class.java)
+            playAudio(byteArray)
         }
-
-
-
 
         binding.buttonFirst.setOnClickListener {
             findNavController().navigate(R.id.action_FirstFragment_to_SecondFragment)
         }
+    }
+
+    private fun playAudio(byteArray: ByteArray) {
+        // Convert byte array to short array
+        val shortArray = byteArrayToShortArray(byteArray)
+
+        // Define the sample rate
+        val sampleRate = 16_000
+
+        // Create and configure AudioTrack using AudioTrack.Builder
+        val audioTrack = AudioTrack.Builder()
+            .setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_MEDIA)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                    .build()
+            )
+            .setAudioFormat(
+                AudioFormat.Builder()
+                    .setSampleRate(sampleRate)
+                    .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                    .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+                    .build()
+            )
+            .setBufferSizeInBytes(shortArray.size * 2) // buffer size in bytes
+            .setTransferMode(AudioTrack.MODE_STATIC)
+            .build()
+
+        // Load the short array data into AudioTrack
+        audioTrack.write(shortArray, 0, shortArray.size)
+
+        // Play the audio
+        audioTrack.play()
+    }
+
+
+    // Helper function to convert byte array to short array
+    private fun byteArrayToShortArray(byteArray: ByteArray): ShortArray {
+        val shortArray = ShortArray(byteArray.size / 2)
+        for (i in shortArray.indices) {
+            shortArray[i] = ((byteArray[2 * i].toInt() and 0xFF) or
+                    (byteArray[2 * i + 1].toInt() shl 8)).toShort()
+        }
+        return shortArray
     }
 
     override fun onDestroyView() {
@@ -64,8 +107,9 @@ class FirstFragment : Fragment() {
         _binding = null
     }
 
-    private fun messageToSound(textOverSound: PyObject, inputText: String, sampleRateHz: Int ){
-        val encodedMessage = textOverSound.callAttr("string_to_pcm_data", inputText).toJava(ByteArray::class.java)
+    private fun messageToSound(textOverSound: PyObject, inputText: String, sampleRateHz: Int) {
+        val encodedMessage =
+            textOverSound.callAttr("string_to_pcm_data", inputText).toJava(ByteArray::class.java)
 
         val buffSize = AudioTrack.getMinBufferSize(
             sampleRateHz,

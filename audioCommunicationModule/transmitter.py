@@ -1,19 +1,17 @@
-import threading
-import time
 from typing import Optional, Union
 
-import pyaudio
 import reedsolo
-import sounddevice as sd
 
 from OFDM import OFDM
-from common import default_samples_per_symbol, default_sample_rate_hz, default_nsym, default_nsize
+from common import default_nsym, default_nsize, default_symbol_size, default_symbol_weight, default_samples_per_symbol, \
+    default_sample_rate_hz, default_frequency_range_start_hz, default_frequency_range_end_hz
 from symbol import OFDMSymbol
 from symbol_map import SymbolMap
 from utils import *
+import numpy as np
 
 
-class Receiver(object):
+class Transmitter:
     def __init__(self,
                  symbol_weight: int,
                  symbol_size: int,
@@ -111,67 +109,35 @@ class Receiver(object):
         self._try_sync()
 
     @staticmethod
-    def decode_string(data: bytes, erasures: set[int], default_char: str = "_", should_correct=False):
-        decoded_data = data.decode("utf-8", errors="replace")
-        org = "".join(default_char if index in erasures else char for index, char in enumerate(decoded_data))
-        if not should_correct:
-            return org
+    def encode_string(string: str):
+        byte_data = string.encode("utf-8")
         rscode = reedsolo.RSCodec(nsym=default_nsym, nsize=default_nsize)
-        corrected_message = org
-        try:
-            corrected_message, _, errata = rscode.decode(data, erase_pos=erasures, only_erasures=True)
-        except reedsolo.ReedSolomonError:
-            print(f"No errors corrected by only correcting erasures! Erasures: {len(erasures)}")
+        return rscode.encode(byte_data)
 
-        try:
-            corrected_message, _, errata = rscode.decode(data, erase_pos=erasures)
-        except reedsolo.ReedSolomonError:
-            print(f"No errors corrected even when attempting to correct errors and erasures")
+    @property
+    def modulation(self):
+        return self._modulation
 
-        print(f"org: {org}")
-        print(f"cor: {corrected_message}")
-        return corrected_message
 
-    def test_receiver_live(symbol_map: SymbolMap, receiver):
-        full_data = bytes()
-        recording_event = threading.Event()
-        received_message = []
+def create_transmitter():
+    symbol_map = SymbolMap(default_symbol_size, default_symbol_weight)
 
-        def signal_handler(input_data: bytes, frame_count: int, time_info, status: sd.CallbackFlags):
-            start_time = time.time()
-            nonlocal full_data
-            nonlocal recording_event
-            receiver.receive_buffer(pcm_to_signal(input_data))
-            if receiver.last_symbol is not None:
-                print(symbol_map.symbols_to_bytes([receiver.last_symbol])[0].decode('ascii', errors='ignore'), end='')
-            end_time = time.time()
-            # print(f"took {end_time - start_time} secs")
-            if receiver.last_symbol == symbol_map.termination_symbol:
-                recording_event.set()
-                return None, pyaudio.paComplete
-            # print(decode_string(*symbol_map.symbols_to_bytes(new_message_symbols)))
-            full_data += input_data
+    transmitter = Transmitter(default_symbol_weight,
+                              default_symbol_size,
+                              default_samples_per_symbol,
+                              default_sample_rate_hz,
+                              default_frequency_range_start_hz,
+                              default_frequency_range_end_hz,
+                              snr_threshold=1.5,
+                              correlation_threshold=0.8)
 
-            return None, pyaudio.paContinue
+    def message_to_wav(message: str):
+        encoded_message = Transmitter.encode_string(message)
 
-        recorder = pyaudio.PyAudio()
+        test_signal = 3 * transmitter.sync_preamble + transmitter.modulation.data_to_signal(
+            encoded_message) + transmitter.modulation.symbols_to_signal(
+            symbol_map.termination_symbol)
 
-        # noinspection PyTypeChecker
-        recorder.open(format=recorder.get_format_from_width(2),
-                      channels=1,
-                      rate=int(default_sample_rate_hz),
-                      input=True,
-                      frames_per_buffer=default_samples_per_symbol,
-                      stream_callback=signal_handler)
+        return signal_to_pcm(test_signal)
 
-        print("Recording...")
-        timeout_sec = 40
-        recording_event.wait(timeout_sec)
-        print("\nStopped recording!")
-
-        recorder.terminate()
-        message_signal = np.array(pcm_to_signal(full_data))
-        data, erasures = receiver.get_message_data()
-        print(
-            f"final message: '{Receiver.decode_string(data, erasures, should_correct=True)}' with {len(erasures)} erasures")
-        return
+    return message_to_wav

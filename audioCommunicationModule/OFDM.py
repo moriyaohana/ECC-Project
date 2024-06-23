@@ -1,6 +1,4 @@
-# noinspection PyUnresolvedReferences
-import numpy as np
-from typing import Optional
+from typing import Optional, Union
 from symbol import OFDMSymbol
 from symbol_map import SymbolMap
 from utils import *
@@ -163,7 +161,7 @@ class OFDM(object):
                 inverse_fft(symbol.frequencies(self._frequencies), data_length, self._sample_rate_hz) +
                 padding_data)
 
-    def symbols_to_signal(self, symbols: OFDMSymbol | list[OFDMSymbol]) -> list[float]:
+    def symbols_to_signal(self, symbols: Union[OFDMSymbol, list[OFDMSymbol]]) -> list[float]:
         if not isinstance(symbols, list):
             symbols = [symbols]
         signal = []

@@ -1,6 +1,7 @@
+from typing import Union
+
 import numpy as np
 from scipy.ndimage.filters import uniform_filter1d
-from matplotlib import pyplot as plt
 
 
 def signal_to_pcm(signal: list[float]) -> bytes:
@@ -30,28 +31,6 @@ def signal_fft(signal: list[float], sample_rate_hz: float) -> list[tuple[float, 
     return list(zip(sampled_frequencies, np.abs(fft_magnitudes)))
 
 
-def plot_signal(signal: list[float], sample_rate_hz: float):
-    t = np.linspace(0, len(signal) / sample_rate_hz, len(signal), endpoint=False)
-
-    plt.plot(t, signal)
-    plt.title('Original Signal')
-    plt.xlabel('Time (sec)')
-    plt.ylabel('Amplitude')
-
-    plt.show()
-
-
-def plot_signal_fft(signal: list[float], sample_rate_hz: float):
-    f, fft = list(zip(*signal_fft(signal, sample_rate_hz)))
-    plt.plot(f, fft)
-
-    plt.title('FFT Result freq')
-    plt.xlabel('frequency (Hz)')
-    plt.ylabel('Amplitude')
-
-    plt.show()
-
-
 def inverse_fft(frequencies_hz: list[float], num_samples: int, sample_rate_hz: float) -> list[float]:
     sum_of_sin = []
     for time_step in range(num_samples):  # num_samples is representing discrete time axis t[s]
@@ -70,17 +49,17 @@ def rolling_std(data: np.ndarray, window_size: int) -> np.ndarray:
                                     window_size,
                                     mode='constant',
                                     cval=0,
-                                    origin=-window_size//2)
-    rolling_mean_squares = uniform_filter1d(data*data,
+                                    origin=-window_size // 2)
+    rolling_mean_squares = uniform_filter1d(data * data,
                                             window_size,
                                             mode='constant',
                                             cval=0,
-                                            origin=-window_size//2)
-    return np.sqrt(rolling_mean_squares - rolling_mean*rolling_mean)[:-window_size + 1]
+                                            origin=-window_size // 2)
+    return np.sqrt(rolling_mean_squares - rolling_mean * rolling_mean)[:-window_size + 1]
 
 
 # TODO: For the Chirp Signal we get a correlation above 1, which is concerning
-def normalized_correlation(signal: np.ndarray | list, preamble: np.ndarray | list) -> np.ndarray:
+def normalized_correlation(signal: Union[np.ndarray, list], preamble: Union[np.ndarray, list]) -> np.ndarray:
     if not isinstance(signal, np.ndarray):
         signal = np.array(signal)
 
