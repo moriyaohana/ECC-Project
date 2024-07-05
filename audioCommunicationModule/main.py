@@ -4,8 +4,8 @@ import time
 
 import pyaudio
 from symbol_map import SymbolMap
-from OFDM import OFDM
 from receiver import Receiver
+from transmitter import Transmitter
 from utils import *
 import numpy as np
 import sounddevice as sd
@@ -177,7 +177,16 @@ def main():
                         default_frequency_range_start_hz,
                         default_frequency_range_end_hz,
                         snr_threshold=1.5,
-                        correlation_threshold=0.8)
+                        correlation_threshold=0.4)
+
+    transmitter = Transmitter(default_symbol_weight,
+                        default_symbol_size,
+                        default_samples_per_symbol,
+                        default_sample_rate_hz,
+                        default_frequency_range_start_hz,
+                        default_frequency_range_end_hz,
+                        snr_threshold=1.5,
+                        sync_preamble_retries=1)
 
     message = "Moriya is here doing a project"
     encoded_message = encode_string(message)

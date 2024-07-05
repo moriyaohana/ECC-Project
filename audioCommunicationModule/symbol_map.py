@@ -25,12 +25,7 @@ class SymbolMap:
             symbol_size,
             symbol_weight)
         self._character_space_size = character_space_size
-        self._sync_symbol = self._symbol_map[character_space_size]
         self._termination_symbol = self._symbol_map[character_space_size + 1]
-
-    @property
-    def sync_symbol(self):
-        return self._sync_symbol
 
     @property
     def termination_symbol(self):

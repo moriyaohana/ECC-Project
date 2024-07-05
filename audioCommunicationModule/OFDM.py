@@ -138,7 +138,7 @@ class OFDM(object):
                 continue
             assert len(correlation) == 1
             correlation = correlation[0]
-            if correlation < 0.7 or removed > 3:
+            if correlation < 0.3 or removed > 3:
                 new_signal += signal_chunk
             removed += 1
 
@@ -149,7 +149,6 @@ class OFDM(object):
         symbols = self.signal_to_symbols(signal)
         try:
             symbols.remove(self._symbol_map.termination_symbol)
-            symbols.remove(self._symbol_map.sync_symbol)
         except ValueError:
             pass
 
@@ -163,15 +162,18 @@ class OFDM(object):
                 inverse_fft(symbol.frequencies(self._frequencies), data_length, self._sample_rate_hz) +
                 padding_data)
 
-    def symbols_to_signal(self, symbols: OFDMSymbol | list[OFDMSymbol]) -> list[float]:
+    def symbols_to_signal(self, symbols: OFDMSymbol | list[OFDMSymbol], terminate: bool = True) -> list[float]:
         if not isinstance(symbols, list):
             symbols = [symbols]
         signal = []
+
+        if terminate:
+            symbols.append(self.termination_symbol)
 
         for symbol in symbols:
             signal += self._symbol_to_signal(symbol)
 
         return signal
 
-    def data_to_signal(self, data: bytes) -> list[float]:
-        return self.symbols_to_signal(self._symbol_map.bytes_to_symbols(data))
+    def data_to_signal(self, data: bytes, terminate: bool = True) -> list[float]:
+        return self.symbols_to_signal(self._symbol_map.bytes_to_symbols(data), terminate)
