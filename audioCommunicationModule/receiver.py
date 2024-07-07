@@ -1,6 +1,7 @@
 from OFDM import OFDM
 import numpy as np
 from symbol import OFDMSymbol
+from reedsolo import RSCodec, ReedSolomonError
 from utils import *
 
 
@@ -12,6 +13,7 @@ class Receiver(object):
                  sample_rate_hz: float,
                  frequency_range_start_hz: float,
                  frequency_range_end_hz: float,
+                 ecc_codec: RSCodec,
                  snr_threshold: float = 1,
                  correlation_threshold: float = 0.7):
 
@@ -29,6 +31,7 @@ class Receiver(object):
         self._sync_score: int = 0
         self._correlation_threshold: float = correlation_threshold
         self._preamble_retries = 0
+        self._ecc_codec = ecc_codec
 
     @property
     def sync_preamble(self) -> list[float]:
@@ -82,17 +85,31 @@ class Receiver(object):
         self._preamble_offset = preamble_location + len(self._modulation.sync_preamble) - len(self._buffer)
         self._buffer = self._buffer[preamble_location + len(self._modulation.sync_preamble):]
 
+    def _decode_message(self, encoded_data: bytes, erasures: set[int]):
+        corrected_message = encoded_data
+        try:
+            corrected_message, _, errata = self._ecc_codec.decode(encoded_data, erase_pos=erasures, only_erasures=True)
+        except ReedSolomonError:
+            print(f"No errors corrected by only correcting erasures! Erasures: {len(erasures)}")
+
+        try:
+            corrected_message, _, errata = self._ecc_codec.decode(encoded_data, erase_pos=erasures)
+        except ReedSolomonError:
+            print(f"No errors corrected even when attempting to correct errors and erasures")
+
+        return corrected_message
+
     def get_message_symbols(self) -> list[OFDMSymbol]:
         if not self._is_synced:
             return list()
 
         return self._modulation.signal_to_symbols(list(self._buffer))
 
-    def get_message_data(self) -> tuple[bytes, set[int]]:
+    def get_message_data(self) -> bytes:
         if not self._is_synced:
-            return bytes(), set()
+            return bytes()
 
-        return self._modulation.signal_to_data(list(self._buffer))
+        return self._decode_message(*self._modulation.signal_to_data(list(self._buffer)))
 
     def receive_buffer(self, signal: list[float]) -> None:
         if self._preamble_offset > 0:

@@ -4,8 +4,8 @@ import time
 
 import pyaudio
 from symbol_map import SymbolMap
-from OFDM import OFDM
 from receiver import Receiver
+from transmitter import Transmitter
 from utils import *
 import numpy as np
 import sounddevice as sd
@@ -75,38 +75,11 @@ def test_recorded_file(receiver: Receiver, symbol_map: SymbolMap, path: str):
     print(message)
 
 
-def decode_string(data: bytes, erasures: set[int], default_char: str = "_", should_correct=False):
-    decoded_data = data.decode("utf-8", errors="replace")
-    org = "".join(default_char if index in erasures else char for index, char in enumerate(decoded_data))
-    if not should_correct:
-        return org
-    rscode = reedsolo.RSCodec(nsym=default_nsym, nsize=default_nsize)
-    corrected_message = org
-    try:
-        corrected_message, _, errata = rscode.decode(data, erase_pos=erasures, only_erasures=True)
-    except reedsolo.ReedSolomonError:
-        print(f"No errors corrected by only correcting erasures! Erasures: {len(erasures)}")
-
-    try:
-        corrected_message, _, errata = rscode.decode(data, erase_pos=erasures)
-    except reedsolo.ReedSolomonError:
-        print(f"No errors corrected even when attempting to correct errors and erasures")
-
-    print(f"org: {org}")
-    print(f"cor: {corrected_message}")
-    return corrected_message
-
-
-def encode_string(string: str):
-    byte_data = string.encode("utf-8")
-    rscode = reedsolo.RSCodec(nsym=default_nsym, nsize=default_nsize)
-    return rscode.encode(byte_data)
-
-
 def test_receiver_live(symbol_map: SymbolMap, receiver: Receiver):
     full_data = bytes()
     recording_event = threading.Event()
     received_message = []
+
     def signal_handler(input_data: bytes, frame_count: int, time_info, status: sd.CallbackFlags):
         start_time = time.time()
         nonlocal full_data
@@ -141,8 +114,8 @@ def test_receiver_live(symbol_map: SymbolMap, receiver: Receiver):
 
     recorder.terminate()
     message_signal = np.array(pcm_to_signal(full_data))
-    data, erasures = receiver.get_message_data()
-    print(f"final message: '{decode_string(data, erasures, should_correct=True)}' with {len(erasures)} erasures")
+    data = receiver.get_message_data()
+    print(f"final message: '{data}'")
     return
 
 
@@ -169,23 +142,30 @@ def play_pcm(pcm: bytes, sample_rate_hz: float):
 
 def main():
     symbol_map = SymbolMap(default_symbol_size, default_symbol_weight)
-
+    ecc_codec = reedsolo.RSCodec(default_nsym, default_nsize)
     receiver = Receiver(default_symbol_weight,
                         default_symbol_size,
                         default_samples_per_symbol,
                         default_sample_rate_hz,
                         default_frequency_range_start_hz,
                         default_frequency_range_end_hz,
+                        ecc_codec,
                         snr_threshold=1.5,
-                        correlation_threshold=0.8)
+                        correlation_threshold=0.4)
+
+    transmitter = Transmitter(default_symbol_weight,
+                              default_symbol_size,
+                              default_samples_per_symbol,
+                              default_sample_rate_hz,
+                              default_frequency_range_start_hz,
+                              default_frequency_range_end_hz,
+                              ecc_codec,
+                              snr_threshold=1.5,
+                              sync_preamble_retries=1)
 
     message = "Moriya is here doing a project"
-    encoded_message = encode_string(message)
-    print(f"Transmitting: {encoded_message}")
-    test_signal = 3 * receiver.sync_preamble + receiver._modulation.data_to_signal(
-        encoded_message) + receiver._modulation.symbols_to_signal(
-        symbol_map.termination_symbol)
-    # store_audio_file("samples\\sample21.wav", signal_to_pcm(test_signal))
+    message_signal = transmitter.transmit_buffer(message.encode('ascii'))
+    store_audio_file("samples\\sample22.wav", signal_to_pcm(message_signal))
 
     # test_recorded_file(receiver, symbol_map, "test_out.wav")
     test_receiver_live(symbol_map, receiver)
