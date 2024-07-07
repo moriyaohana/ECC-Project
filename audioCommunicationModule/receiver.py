@@ -105,9 +105,9 @@ class Receiver(object):
 
         return self._modulation.signal_to_symbols(list(self._buffer))
 
-    def get_message_data(self) -> tuple[bytes, set[int]]:
+    def get_message_data(self) -> bytes:
         if not self._is_synced:
-            return bytes(), set()
+            return bytes()
 
         return self._decode_message(*self._modulation.signal_to_data(list(self._buffer)))
 
