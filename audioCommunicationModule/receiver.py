@@ -1,8 +1,9 @@
 from OFDM import OFDM
 import numpy as np
 from symbol import OFDMSymbol
+from typing import List, Union, Tuple, Set
 from reedsolo import RSCodec, ReedSolomonError
-from utils import *
+from utils import pcm_to_signal, normalized_correlation
 
 
 class Receiver(object):
@@ -13,7 +14,8 @@ class Receiver(object):
                  sample_rate_hz: float,
                  frequency_range_start_hz: float,
                  frequency_range_end_hz: float,
-                 ecc_codec: RSCodec,
+                 ecc_symbols: int,
+                 ecc_block: int,
                  snr_threshold: float = 1,
                  correlation_threshold: float = 0.7):
 
@@ -25,26 +27,26 @@ class Receiver(object):
                                 frequency_range_end_hz,
                                 snr_threshold)
         self._is_synced: bool = False
-        self._buffer: list[float] = []
+        self._buffer: List[float] = []
         self._preamble_offset: int = 0
         self._last_sync_location: int = 0
         self._sync_score: int = 0
         self._correlation_threshold: float = correlation_threshold
         self._preamble_retries = 0
-        self._ecc_codec = ecc_codec
+        self._ecc_codec = RSCodec(ecc_symbols, ecc_block)
 
     @property
-    def sync_preamble(self) -> list[float]:
+    def sync_preamble(self) -> List[float]:
         return self._modulation.sync_preamble
 
     @property
-    def last_symbol(self) -> None | OFDMSymbol:
+    def last_symbol(self) -> Union[None, OFDMSymbol]:
         if not self._is_synced or len(self._buffer) < 4096:
             return None
 
         return self._modulation.signal_to_symbols(self._buffer[-4096:])[0]
 
-    def _detect_preamble(self) -> tuple[int, float] | tuple[None, None]:
+    def _detect_preamble(self) -> Union[Tuple[int, float], Tuple[None, None]]:
         correlation = normalized_correlation(np.array(self._buffer[self._last_sync_location:]),
                                                   np.array(self._modulation.sync_preamble))
         if len(correlation) == 0:
@@ -85,7 +87,7 @@ class Receiver(object):
         self._preamble_offset = preamble_location + len(self._modulation.sync_preamble) - len(self._buffer)
         self._buffer = self._buffer[preamble_location + len(self._modulation.sync_preamble):]
 
-    def _decode_message(self, encoded_data: bytes, erasures: set[int]):
+    def _decode_message(self, encoded_data: bytes, erasures: Set[int]):
         corrected_message = encoded_data
         try:
             corrected_message, _, errata = self._ecc_codec.decode(encoded_data, erase_pos=erasures, only_erasures=True)
@@ -99,7 +101,7 @@ class Receiver(object):
 
         return corrected_message
 
-    def get_message_symbols(self) -> list[OFDMSymbol]:
+    def get_message_symbols(self) -> List[OFDMSymbol]:
         if not self._is_synced:
             return list()
 
@@ -111,9 +113,12 @@ class Receiver(object):
 
         return self._decode_message(*self._modulation.signal_to_data(list(self._buffer)))
 
-    def receive_buffer(self, signal: list[float]) -> None:
+    def receive_signal(self, signal: List[float]) -> None:
         if self._preamble_offset > 0:
             signal = signal[self._preamble_offset:]
             self._preamble_offset = 0
         self._buffer = np.append(self._buffer, signal)
         self._try_sync()
+
+    def receive_pcm_buffer(self, pcm_data: bytes) -> None:
+        self.receive_signal(pcm_to_signal(pcm_data))

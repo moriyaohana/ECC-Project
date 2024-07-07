@@ -1,12 +1,15 @@
+from typing import List, Set
+
+
 class OFDMSymbol(object):
-    def __init__(self, indices: set[int]):
+    def __init__(self, indices: Set[int]):
         self._indices = indices
 
     @property
     def weight(self):
         return len(self._indices)
 
-    def frequencies(self, all_frequencies: list[float]) -> list[float]:
+    def frequencies(self, all_frequencies: List[float]) -> List[float]:
         return [all_frequencies[index] for index in self._indices]
 
     def __eq__(self, other):

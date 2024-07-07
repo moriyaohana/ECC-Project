@@ -9,6 +9,7 @@ import androidx.navigation.ui.navigateUp
 import androidx.navigation.ui.setupActionBarWithNavController
 import android.view.Menu
 import android.view.MenuItem
+import androidx.preference.PreferenceManager
 import com.sipl.textoveraudioapp.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() {
@@ -18,6 +19,10 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        if (PreferenceManager.getDefaultSharedPreferences(this).all.isEmpty()) {
+            PreferenceManager.setDefaultValues(this, R.xml.preferences, true)
+        }
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
@@ -45,7 +50,10 @@ class MainActivity : AppCompatActivity() {
         // automatically handle clicks on the Home/Up button, so long
         // as you specify a parent activity in AndroidManifest.xml.
         return when (item.itemId) {
-            R.id.action_settings -> true
+            R.id.action_settings -> {
+                findNavController(R.id.nav_host_fragment_content_main).navigate(R.id.action_global_settingsFragment)
+                true
+            }
             else -> super.onOptionsItemSelected(item)
         }
     }

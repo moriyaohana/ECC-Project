@@ -1,5 +1,6 @@
 package com.sipl.textoveraudioapp
 
+import android.content.SharedPreferences
 import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioManager
@@ -10,9 +11,10 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
-import com.chaquo.python.PyObject
+import androidx.preference.PreferenceManager
 import com.chaquo.python.Python
 import com.sipl.textoveraudioapp.databinding.FragmentFirstBinding
+import kotlin.math.roundToInt
 
 
 /**
@@ -36,23 +38,40 @@ class FirstFragment : Fragment() {
 
     }
 
+    private fun constructTransmitterWrapperFromPreferences(python: Python, sharedPreferences: SharedPreferences): TransmitterWrapper {
+        // TODO: Should validate preferences
+        return TransmitterWrapper(
+            python,
+            sharedPreferences.getString("symbol_weight", null)!!.toInt(),
+            sharedPreferences.getString("symbol_size", null)!!.toInt(),
+            sharedPreferences.getString("samples_per_symbol", null)!!.toInt(),
+            sharedPreferences.getString("sample_rate_hz", null)!!.toFloat(),
+            sharedPreferences.getString("frequency_range_start_hz", null)!!.toFloat(),
+            sharedPreferences.getString("frequency_range_end_hz", null)!!.toFloat(),
+            sharedPreferences.getString("ecc_symbols", null)!!.toInt(),
+            sharedPreferences.getString("ecc_block", null)!!.toInt(),
+            sharedPreferences.getString("snr_threshold", null)!!.toFloat())
+    }
+
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
         val python: Python = Python.getInstance()
+        val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(requireContext())
 
-        //initialization
-        val textOverSoundModule: PyObject = python.getModule("text_over_sound")
-        val textOverSound: PyObject = textOverSoundModule.callAttr("TextOverSound",250, 10, 20, 16, 3, 16)
+        var transmitter = constructTransmitterWrapperFromPreferences(python, sharedPreferences)
+
+        val onSharedPreferenceChangeCallback = { newSharedPreferences: SharedPreferences, _: String? ->
+            transmitter = constructTransmitterWrapperFromPreferences(python, newSharedPreferences)
+        }
+
+        sharedPreferences.registerOnSharedPreferenceChangeListener(onSharedPreferenceChangeCallback)
 
         //event: the user sending a message
         binding.sendMessage.setOnClickListener {
             val inputText: String = binding.messageInput.text.toString()
-            messageToSound(textOverSound, inputText, 16000)
+            messageToSound(transmitter.transmitBuffer(inputText.encodeToByteArray()), transmitter.sampleRateHz)
         }
-
-
-
 
         binding.buttonFirst.setOnClickListener {
             findNavController().navigate(R.id.action_FirstFragment_to_SecondFragment)
@@ -64,11 +83,9 @@ class FirstFragment : Fragment() {
         _binding = null
     }
 
-    private fun messageToSound(textOverSound: PyObject, inputText: String, sampleRateHz: Int ){
-        val encodedMessage = textOverSound.callAttr("string_to_pcm_data", inputText).toJava(ByteArray::class.java)
-
+    private fun messageToSound(messageData: ByteArray, sampleRateHz: Float ){
         val buffSize = AudioTrack.getMinBufferSize(
-            sampleRateHz,
+            sampleRateHz.roundToInt(),
             AudioFormat.CHANNEL_OUT_MONO,
             AudioFormat.ENCODING_PCM_16BIT
         )
@@ -81,7 +98,7 @@ class FirstFragment : Fragment() {
             AudioFormat.Builder()
                 .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
                 .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-                .setSampleRate(sampleRateHz)
+                .setSampleRate(sampleRateHz.roundToInt())
                 .build(),
             buffSize,
             AudioTrack.MODE_STREAM,
@@ -89,7 +106,7 @@ class FirstFragment : Fragment() {
         )
 
         audio.play()
-        audio.write(encodedMessage, 0, encodedMessage.size)
+        audio.write(messageData, 0, messageData.size)
         audio.stop()
     }
 }

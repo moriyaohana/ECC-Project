@@ -1,4 +1,5 @@
 from itertools import combinations
+from typing import Union, List, Tuple, Set
 from symbol import OFDMSymbol
 
 
@@ -34,7 +35,7 @@ class SymbolMap:
     @staticmethod
     def _create_mapping(
             symbol_size: int,
-            symbol_weight: int) -> list[OFDMSymbol]:
+            symbol_weight: int) -> List[OFDMSymbol]:
         # Generate all combinations of indices with weight symbol_weight
         index_combinations = list(combinations(range(symbol_size), symbol_weight))
 
@@ -42,23 +43,23 @@ class SymbolMap:
 
         return symbols
 
-    def _byte_to_symbol(self, byte: int) -> OFDMSymbol | None:
+    def _byte_to_symbol(self, byte: int) -> Union[OFDMSymbol, None]:
         if byte >= self._character_space_size:
             return None
         return self._symbol_map[byte]
 
-    def _symbol_to_value(self, symbol: OFDMSymbol | None) -> int | None:
+    def _symbol_to_value(self, symbol: Union[OFDMSymbol, None]) -> Union[int, None]:
         if symbol not in self._symbol_map:
             return None
         return self._symbol_map.index(symbol)
 
-    def bytes_to_symbols(self, data: bytes) -> list[OFDMSymbol]:
+    def bytes_to_symbols(self, data: bytes) -> List[OFDMSymbol]:
         return [self._byte_to_symbol(byte) for byte in data]
 
-    def _symbols_to_raw_values(self, symbols: list[OFDMSymbol]) -> list[int]:
+    def _symbols_to_raw_values(self, symbols: List[OFDMSymbol]) -> List[int]:
         return [self._symbol_to_value(symbol) for symbol in symbols]
 
-    def symbols_to_bytes(self, symbols: list[OFDMSymbol]) -> tuple[bytes, set[int]]:
+    def symbols_to_bytes(self, symbols: List[OFDMSymbol]) -> Tuple[bytes, Set[int]]:
         raw_values = self._symbols_to_raw_values(symbols)
         byte_values = bytes([value if value is not None and value < self._character_space_size
                              else self.UNRECOGNISED_SYMBOL
