@@ -26,6 +26,7 @@ class Transmitter(object):
     def transmit_buffer(self, buffer: bytes) -> list[float]:
         message_signal = (
             (self._preamble_retries * self._modulation.sync_preamble) +
-            self._modulation.data_to_signal(self._ecc_codec.encode(buffer), terminate=True))
+            self._modulation.data_to_signal(self._ecc_codec.encode(buffer)) +
+            self._preamble_retries * self._modulation.sync_preamble)
 
         return message_signal

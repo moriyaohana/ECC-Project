@@ -48,26 +48,21 @@ class Receiver(object):
         correlation = normalized_correlation(np.array(self._buffer[self._last_sync_location:]),
                                                   np.array(self._modulation.sync_preamble))
         if len(correlation) == 0:
+            print("Is None")
             return None, None
-        peak_value = np.max(correlation)
+        peak_value = abs(np.max(correlation))
+
         if peak_value > self._correlation_threshold:
             return np.argmax(correlation), max(correlation)
 
         return None, None
 
-    def _resync(self, new_sync_location: int, new_sync_score: int):
-        if new_sync_score > self._sync_score:
-            self._sync_score = new_sync_score
-            self._last_sync_location = min(new_sync_location + len(self._modulation.sync_preamble),
-                                           len(self._buffer))
-            self._buffer = self._buffer[new_sync_location + len(self._modulation.sync_preamble):]
+    def _detect_preamble(self) -> Union[Tuple[int, float], Tuple[None, None]]:
+        return self._detect_preamble_in_buffer(self._buffer[self._last_sync_location:])
 
     def _try_sync(self):
-        if self._preamble_retries >= 3:
-            return
-
         if self._is_synced:
-            self._preamble_retries += 1
+            return
 
         preamble_location, sync_score = self._detect_preamble()
         if preamble_location is None:
@@ -76,9 +71,6 @@ class Receiver(object):
                 self._buffer = self._buffer[-buffer_size_to_keep:]
 
             return
-
-        if self._is_synced:
-            return self._resync(preamble_location, sync_score)
 
         self._is_synced = True
         self._sync_score = sync_score
@@ -105,15 +97,32 @@ class Receiver(object):
 
         return self._modulation.signal_to_symbols(list(self._buffer))
 
-    def get_message_data(self) -> bytes:
+    def get_message_data(self) -> Tuple[bytes, Set[int]]:
         if not self._is_synced:
-            return bytes()
+            return bytes(), set()
 
-        return self._decode_message(*self._modulation.signal_to_data(list(self._buffer)))
+        return self._modulation.signal_to_data(list(self._buffer))
 
     def receive_buffer(self, signal: list[float]) -> None:
         if self._preamble_offset > 0:
             signal = signal[self._preamble_offset:]
             self._preamble_offset = 0
         self._buffer = np.append(self._buffer, signal)
+        if self._is_synced and self._detect_preamble_in_buffer(self._buffer[- 2 * len(self.sync_preamble):])[0] is not None:
+            self._terminate_message()
+
         self._try_sync()
+
+    def _terminate_message(self):
+        current_message, current_errors = self.get_message_data()
+        self._message_history.append(
+            (current_message,
+            current_errors,
+            self._decode_message(current_message, current_errors))
+        )
+        self._preamble_offset = 0
+        self._preamble_retries = 0
+        self._last_sync_location = 0
+        self._buffer = []
+        self._is_synced = False
+

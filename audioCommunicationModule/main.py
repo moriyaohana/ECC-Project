@@ -12,6 +12,7 @@ import sounddevice as sd
 import wave
 import reedsolo
 
+
 default_samples_per_symbol = 4096
 default_frequency_range_start_hz = 2_000
 default_frequency_range_end_hz = 4_000
@@ -85,20 +86,24 @@ def test_receiver_live(symbol_map: SymbolMap, receiver: Receiver):
         nonlocal full_data
         nonlocal recording_event
         receiver.receive_buffer(pcm_to_signal(input_data))
-        if receiver.last_symbol is not None:
-            print(symbol_map.symbols_to_bytes([receiver.last_symbol])[0].decode('ascii', errors='ignore'), end='')
-        end_time = time.time()
+
+        # if receiver.last_symbol is not None:
+        #     print(symbol_map.symbols_to_bytes([receiver.last_symbol])[0].decode('ascii', errors='ignore'), end='')
+        # end_time = time.time()
         # print(f"took {end_time - start_time} secs")
-        if receiver.last_symbol == symbol_map.termination_symbol:
-            recording_event.set()
-            return None, pyaudio.paComplete
+        # if receiver.last_symbol == symbol_map.termination_symbol:
+        #     recording_event.set()
+        #     return None, pyaudio.paComplete
         # print(decode_string(*symbol_map.symbols_to_bytes(new_message_symbols)))
         full_data += input_data
+
+        if len(receiver.message_history) > 0:
+            recording_event.set()
+            return None, pyaudio.paComplete
 
         return None, pyaudio.paContinue
 
     recorder = pyaudio.PyAudio()
-
     # noinspection PyTypeChecker
     recorder.open(format=recorder.get_format_from_width(2),
                   channels=1,
@@ -108,14 +113,15 @@ def test_receiver_live(symbol_map: SymbolMap, receiver: Receiver):
                   stream_callback=signal_handler)
 
     print("Recording...")
-    timeout_sec = 40
+    timeout_sec = 7
     recording_event.wait(timeout_sec)
     print("\nStopped recording!")
 
     recorder.terminate()
     message_signal = np.array(pcm_to_signal(full_data))
-    data = receiver.get_message_data()
-    print(f"final message: '{data}'")
+    pydevd.settrace()
+    data = receiver.message_history
+    print(f"final message: '{data[0][2]}'")
     return
 
 
@@ -163,9 +169,9 @@ def main():
                               snr_threshold=1.5,
                               sync_preamble_retries=1)
 
-    message = "Moriya is here doing a project"
+    message = "Moriya"
     message_signal = transmitter.transmit_buffer(message.encode('ascii'))
-    store_audio_file("samples\\sample22.wav", signal_to_pcm(message_signal))
+    # store_audio_file("samples\\sample24.wav", signal_to_pcm(message_signal))
 
     # test_recorded_file(receiver, symbol_map, "test_out.wav")
     test_receiver_live(symbol_map, receiver)

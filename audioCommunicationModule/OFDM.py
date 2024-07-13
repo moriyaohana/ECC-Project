@@ -162,18 +162,15 @@ class OFDM(object):
                 inverse_fft(symbol.frequencies(self._frequencies), data_length, self._sample_rate_hz) +
                 padding_data)
 
-    def symbols_to_signal(self, symbols: OFDMSymbol | list[OFDMSymbol], terminate: bool = True) -> list[float]:
+    def symbols_to_signal(self, symbols: Union[OFDMSymbol, List[OFDMSymbol]]) -> List[float]:
         if not isinstance(symbols, list):
             symbols = [symbols]
         signal = []
-
-        if terminate:
-            symbols.append(self.termination_symbol)
 
         for symbol in symbols:
             signal += self._symbol_to_signal(symbol)
 
         return signal
 
-    def data_to_signal(self, data: bytes, terminate: bool = True) -> list[float]:
-        return self.symbols_to_signal(self._symbol_map.bytes_to_symbols(data), terminate)
+    def data_to_signal(self, data: bytes) -> List[float]:
+        return self.symbols_to_signal(self._symbol_map.bytes_to_symbols(data))
