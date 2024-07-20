@@ -25,4 +25,9 @@
             android:id="@+id/action_ReceiverFragment_to_TransmitterFragment"
             app:destination="@id/TranmitterFragment" />
     </fragment>
+    <fragment
+        android:id="@+id/settingsFragment"
+        android:name="com.sipl.textoveraudioapp.SettingsFragment"
+        android:label="SettingsFragment" /><action android:id="@+id/action_global_settingsFragment" app:destination="@id/settingsFragment"/>
+
 </navigation>
