@@ -61,9 +61,9 @@ class ReceiverWrapper(
         return messageHistory
     }
 
-    fun receivePcmBuffer(buffer: ByteArray) {
+    fun receivePcmBuffer(buffer: ShortArray) {
         val pythonBuffer = PyObject.fromJava(buffer)
-        receiver.callAttr("receive_pcm_buffer", pythonBuffer)
+        receiver.callAttr("receive_pcm16_buffer", pythonBuffer)
     }
 
     fun isSynchronised(): Boolean {

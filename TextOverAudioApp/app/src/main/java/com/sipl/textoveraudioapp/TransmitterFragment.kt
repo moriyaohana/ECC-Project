@@ -11,7 +11,6 @@ import android.os.Looper
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
-import android.view.View.OnClickListener
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
@@ -62,12 +61,6 @@ class TransmitterFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-
-        val python: Python = Python.getInstance()
-
-        //initialization
-        val textOverSoundModule: PyObject = python.getModule("text_over_sound")
-        val textOverSound: PyObject = textOverSoundModule.callAttr("TextOverSound",250, 10, 20, 16, 3, 16)
 
         //event: the user sending a message
         binding.sendMessage.setOnClickListener {

@@ -23,26 +23,6 @@ default_nsym = 5
 default_nsize = 15
 
 
-def normalized_correlation(signal, preamble):
-    normalized_signal = np.array(signal) / np.std(signal)
-    normalized_preamble = np.array(preamble) / np.std(preamble)
-
-    return np.correlate(normalized_signal, normalized_preamble, mode='valid') / min(len(signal), len(preamble))
-
-
-def random_frequencies(frequencies_hz: list[float], num_samples: int, sample_rate_hz: float):
-    chunk_size = 64
-    preamble = []
-    for freq_index, _ in enumerate(range(0, num_samples, chunk_size)):
-        chunk = inverse_fft([random.choice(frequencies_hz)], chunk_size, sample_rate_hz)
-        preamble += chunk
-
-    remainder = num_samples - len(preamble)
-    preamble += inverse_fft([random.choice(frequencies_hz)], remainder, sample_rate_hz)
-
-    return preamble
-
-
 def load_audio_file(path: str) -> bytes:
     with wave.open(path, "rb") as audio_file:
         return audio_file.readframes(audio_file.getnframes())
@@ -76,7 +56,7 @@ def test_recorded_file(receiver: Receiver, symbol_map: SymbolMap, path: str):
     print(message)
 
 
-def test_receiver_live(symbol_map: SymbolMap, receiver: Receiver):
+def test_receiver_live(receiver: Receiver):
     full_data = bytes()
     recording_event = threading.Event()
     received_message = []
@@ -119,7 +99,6 @@ def test_receiver_live(symbol_map: SymbolMap, receiver: Receiver):
 
     recorder.terminate()
     message_signal = np.array(pcm_to_signal(full_data))
-    pydevd.settrace()
     data = receiver.message_history
     print(f"final message: '{data[0][2]}'")
     return
@@ -155,7 +134,8 @@ def main():
                         default_sample_rate_hz,
                         default_frequency_range_start_hz,
                         default_frequency_range_end_hz,
-                        ecc_codec,
+                        default_nsym,
+                        default_nsize,
                         snr_threshold=1.5,
                         correlation_threshold=0.4)
 
@@ -165,16 +145,16 @@ def main():
                               default_sample_rate_hz,
                               default_frequency_range_start_hz,
                               default_frequency_range_end_hz,
-                              ecc_codec,
-                              snr_threshold=1.5,
-                              sync_preamble_retries=1)
+                              default_nsym,
+                              default_nsize,
+                              snr_threshold=1.5)
 
     message = "Moriya"
     message_signal = transmitter.transmit_buffer(message.encode('ascii'))
     # store_audio_file("samples\\sample24.wav", signal_to_pcm(message_signal))
 
     # test_recorded_file(receiver, symbol_map, "test_out.wav")
-    test_receiver_live(symbol_map, receiver)
+    test_receiver_live(receiver)
 
 
 if __name__ == '__main__':
