@@ -84,6 +84,21 @@ class TransmitterFragment : Fragment() {
         _binding = null
     }
 
+    private fun constructTransmitterWrapperFromPreferences(python: Python, sharedPreferences: SharedPreferences): TransmitterWrapper {
+        // TODO: Should validate preferences
+        return TransmitterWrapper(
+            python,
+            sharedPreferences.getString("symbol_weight", null)!!.toInt(),
+            sharedPreferences.getString("symbol_size", null)!!.toInt(),
+            sharedPreferences.getString("samples_per_symbol", null)!!.toInt(),
+            sharedPreferences.getString("sample_rate_hz", null)!!.toFloat(),
+            sharedPreferences.getString("frequency_range_start_hz", null)!!.toFloat(),
+            sharedPreferences.getString("frequency_range_end_hz", null)!!.toFloat(),
+            sharedPreferences.getString("ecc_symbols", null)!!.toInt(),
+            sharedPreferences.getString("ecc_block", null)!!.toInt(),
+            sharedPreferences.getString("snr_threshold", null)!!.toFloat())
+    }
+
     private fun sendClicked(v: View) {
         if (sendingFuture == null || sendingFuture!!.isDone) {
             sendMessage()
