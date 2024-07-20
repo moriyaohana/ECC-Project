@@ -44,7 +44,7 @@ class ReceiverWrapper(
     }
 
     fun getMessageHistory(): MessageHistory{
-        val messageList = receiver.get("message_history")!!.asList()
+        val messageList = receiver["message_history"]!!.asList()
         val messageHistory = MessageHistory()
 
         for (messageFields in messageList) {
@@ -67,6 +67,6 @@ class ReceiverWrapper(
     }
 
     fun isSynchronised(): Boolean {
-        return receiver.get("is_synchronised")!!.toBoolean()
+        return receiver["is_synchronised"]!!.toBoolean()
     }
 }
