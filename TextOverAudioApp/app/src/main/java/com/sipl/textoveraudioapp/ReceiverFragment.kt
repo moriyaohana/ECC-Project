@@ -159,11 +159,12 @@ class ReceiverFragment : Fragment() {
                     val isSynchronised = receiver.isSynchronised()
                     if (!isReceivingMessage && isSynchronised) {
                         withContext(Dispatchers.Main) {
-                            updateMessageView()
+                            binding.receive.text = "receiving message..."
                         }
                     } else if (isReceivingMessage && !isSynchronised) {
                         withContext(Dispatchers.Main) {
-                            binding.receive.text = "receiving message..."
+                            updateMessageView()
+                            binding.receive.text = "listening"
                         }
                     }
                     isReceivingMessage = isSynchronised
