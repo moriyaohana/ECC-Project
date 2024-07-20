@@ -96,19 +96,27 @@ class Receiver(object):
 
         return self._modulation.signal_to_symbols(list(self._buffer))
 
-    def get_message_data(self) -> Tuple[bytes, Set[int]]:
+    def get_message_data(self) -> Tuple[bytes, Set[int], bytes]:
         if not self._is_synced:
-            return bytes(), set()
+            return bytes(), set(), bytes()
 
-        return self._modulation.signal_to_data(list(self._buffer))
+        raw_message, errors = self._modulation.signal_to_data(list(self._buffer))
+        print(raw_message)
+        print(errors)
+        decoded_message, _, errata = self._ecc_codec.decode(raw_message, erase_pos=errors)
+
+        return raw_message, errata, decoded_message
 
     def receive_buffer(self, signal: List[float]) -> None:
         if self._preamble_offset > 0:
             signal = signal[self._preamble_offset:]
             self._preamble_offset = 0
         self._buffer = np.append(self._buffer, signal)
-        if self._is_synced and self._detect_preamble_in_buffer(self._buffer[- 2 * len(self.sync_preamble):])[
-            0] is not None:
+
+        potential_termination_index = - 2 * len(self.sync_preamble)
+        termination_location, _ = self._detect_preamble_in_buffer(self._buffer[potential_termination_index:])
+        if self._is_synced and termination_location is not None:
+            self._buffer = self._buffer[: potential_termination_index + termination_location]
             self._terminate_message()
 
         self._try_sync()
@@ -118,11 +126,11 @@ class Receiver(object):
         return self.receive_buffer(pcm_to_signal(pcm_data_bytes))
 
     def _terminate_message(self):
-        current_message, current_errors = self.get_message_data()
+        current_message, current_errors, decoded_message = self.get_message_data()
         self._message_history.append(
             (current_message,
              current_errors,
-             self._decode_message(current_message, current_errors))
+             decoded_message)
         )
         self._preamble_offset = 0
         self._preamble_retries = 0

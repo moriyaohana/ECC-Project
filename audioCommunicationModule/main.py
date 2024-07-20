@@ -38,22 +38,14 @@ def store_audio_file(path: str, pcm_data: bytes):
 
 def test_recorded_file(receiver: Receiver, symbol_map: SymbolMap, path: str):
     audio_data = load_audio_file(path)
-    audio_signal = pcm_to_signal(audio_data)
+    audio_signal = [0] * 2048 + pcm_to_signal(audio_data)
 
-    chunk_size = receiver._modulation.samples_per_symbol
+    chunk_size = default_samples_per_symbol
     for chunk_index in range(0, len(audio_signal), chunk_size):
-        if receiver._is_synced:
-            print(symbol_map.symbols_to_string(receiver.get_message_symbols()))
-
-        start_time = time.time()
         receiver.receive_buffer(audio_signal[chunk_index:chunk_index + chunk_size])
-        end_time = time.time()
-        print(
-            f"receive took {end_time - start_time} seconds. "
-            f"block duration is {default_samples_per_symbol / default_samples_per_symbol} seconds")
 
-    message = symbol_map.symbols_to_string(receiver.get_message_symbols())
-    print(message)
+    message_history = receiver.message_history
+    print(message_history)
 
 
 def test_receiver_live(receiver: Receiver):
@@ -125,6 +117,13 @@ def play_pcm(pcm: bytes, sample_rate_hz: float):
     playback.terminate()
 
 
+def transmitter_demonstration(transmitter: Transmitter):
+    while True:
+        message = input("Enter Message: ")
+        message_signal = transmitter.transmit_buffer(message.encode('ascii'))
+        play_pcm(signal_to_pcm(message_signal), default_sample_rate_hz)
+
+
 def main():
     symbol_map = SymbolMap(default_symbol_size, default_symbol_weight)
     ecc_codec = reedsolo.RSCodec(default_nsym, default_nsize)
@@ -149,12 +148,16 @@ def main():
                               default_nsize,
                               snr_threshold=1.5)
 
-    message = "Moriya"
+    message = "To go"
+    print(transmitter._ecc_codec.encode(message.encode('ascii')))
     message_signal = transmitter.transmit_buffer(message.encode('ascii'))
+    # play_pcm(signal_to_pcm(message_signal), 16000)
     # store_audio_file("samples\\sample24.wav", signal_to_pcm(message_signal))
 
-    # test_recorded_file(receiver, symbol_map, "test_out.wav")
-    test_receiver_live(receiver)
+    transmitter_demonstration(transmitter)
+
+    # test_recorded_file(receiver, symbol_map, "samples/sample24.wav")
+    # test_receiver_live(receiver)
 
 
 if __name__ == '__main__':

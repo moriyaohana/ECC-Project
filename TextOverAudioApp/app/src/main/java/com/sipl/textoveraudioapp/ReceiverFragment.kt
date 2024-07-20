@@ -15,6 +15,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import androidx.preference.PreferenceManager
+import androidx.recyclerview.widget.LinearLayoutManager
 import com.chaquo.python.Python
 import com.sipl.textoveraudioapp.databinding.FragmentReceiverBinding
 import kotlinx.coroutines.Dispatchers
@@ -22,7 +23,6 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.nio.ByteBuffer
 import kotlin.time.measureTime
 
 
@@ -44,6 +44,9 @@ class ReceiverFragment : Fragment() {
     private var allDataShort = ArrayList<Short>()
     private var allDataBytes = ArrayList<Byte>()
     private lateinit var audioRecord: AudioRecord
+    private val messageHistoryAdapter = MessageHistoryAdapter()
+    private lateinit var sharedPreferences: SharedPreferences
+    private lateinit var python: Python
 
 
     private val isReceiving = false
@@ -53,13 +56,15 @@ class ReceiverFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View {
 
-        val python: Python = Python.getInstance()
-        val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(requireContext())
+        python = Python.getInstance()
+        sharedPreferences = PreferenceManager.getDefaultSharedPreferences(requireContext())
 
-        receiver = constructReceiverWrapperFromPreferences(python, sharedPreferences)
+        receiver = constructReceiverWrapperFromPreferences()
 
         val onSharedPreferenceChangeCallback = { newSharedPreferences: SharedPreferences, _: String? ->
-            receiver = constructReceiverWrapperFromPreferences(python, newSharedPreferences)
+            sharedPreferences = newSharedPreferences
+            Log.d("Receiver", "Updated preferences. New threshold: ${sharedPreferences.getString("correlation_threshold", "N/A")}")
+            receiver = constructReceiverWrapperFromPreferences()
         }
 
         sharedPreferences.registerOnSharedPreferenceChangeListener(onSharedPreferenceChangeCallback)
@@ -89,7 +94,10 @@ class ReceiverFragment : Fragment() {
             receiveClicked()
         }
 
-        binding.toTransitter.setOnClickListener {
+        binding.messageHistory.layoutManager = LinearLayoutManager(requireContext())
+        binding.messageHistory.adapter = messageHistoryAdapter
+
+        binding.toTransmitter.setOnClickListener {
             findNavController().navigate(R.id.action_ReceiverFragment_to_TransmitterFragment)
         }
     }
@@ -99,7 +107,7 @@ class ReceiverFragment : Fragment() {
         _binding = null
     }
 
-    private fun constructReceiverWrapperFromPreferences(python: Python, sharedPreferences: SharedPreferences): ReceiverWrapper {
+    private fun constructReceiverWrapperFromPreferences(): ReceiverWrapper {
         // TODO: Should validate preferences
         return ReceiverWrapper(
             python,
@@ -130,6 +138,7 @@ class ReceiverFragment : Fragment() {
         audioRecord.stop()
         audioRecord.release()
         isReceivingMessage = false
+        receiver = constructReceiverWrapperFromPreferences()
 
         binding.receive.text = "receive"
     }
@@ -154,7 +163,6 @@ class ReceiverFragment : Fragment() {
             while (isActive) {
                 val t = measureTime {
                     audioRecord.read(audioBuffer, 0, audioBuffer.size)
-//                    val receivedBytes = shortArrayToByteArray(audioBuffer)
                     receiver.receivePcmBuffer(audioBuffer)
                     val isSynchronised = receiver.isSynchronised()
                     if (!isReceivingMessage && isSynchronised) {
@@ -164,12 +172,10 @@ class ReceiverFragment : Fragment() {
                     } else if (isReceivingMessage && !isSynchronised) {
                         withContext(Dispatchers.Main) {
                             updateMessageView()
-                            binding.receive.text = "listening"
+                            binding.receive.text = "listening..."
                         }
                     }
                     isReceivingMessage = isSynchronised
-//                    allDataBytes.addAll(receivedBytes.asIterable())
-                    allDataShort.addAll(audioBuffer.asIterable())
                 }
                 Log.d("Timing", "Block took $t")
             }
@@ -177,17 +183,15 @@ class ReceiverFragment : Fragment() {
     }
 
     private fun updateMessageView() {
+        val newMessageHistory = receiver.getMessageHistory()
 
-    }
-
-    private fun shortArrayToByteArray(shortArray: ShortArray): ByteArray {
-        val byteArray = ByteArray(shortArray.size * 2)
-        var index = 0
-        shortArray.forEach {
-            byteArray[index++] = (it.toInt() shr 8).toByte()
-            byteArray[index++] = it.toByte()
+        var startIndex = messageHistoryAdapter.itemCount
+        if (newMessageHistory.size < messageHistoryAdapter.itemCount) {
+            startIndex = 0
         }
 
-        return byteArray
+        for (index in startIndex..<newMessageHistory.size) {
+            messageHistoryAdapter.addMessage(newMessageHistory[index])
+        }
     }
 }

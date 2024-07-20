@@ -24,7 +24,7 @@ class SettingsFragment : PreferenceFragmentCompat() {
     private fun setEditTextPreferencesToNumberInput(key: String) {
         val preference = preferenceScreen.findPreference<EditTextPreference>(key)
         preference!!.setOnBindEditTextListener { editText ->
-            editText.inputType = InputType.TYPE_CLASS_NUMBER
+            editText.inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL
         }
     }
 }
