@@ -3,6 +3,8 @@ from typing import List
 from OFDM import OFDM
 from reedsolo import RSCodec
 
+from utils import signal_to_pcm
+
 
 class Transmitter(object):
     def __init__(self,
@@ -32,3 +34,6 @@ class Transmitter(object):
             self._modulation.sync_preamble)
 
         return message_signal
+
+    def transmit_pcm_data(self, buffer: bytes) -> bytes:
+        return signal_to_pcm(self.transmit_buffer(buffer))

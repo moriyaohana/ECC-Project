@@ -144,7 +144,7 @@ def main():
                               default_sample_rate_hz,
                               default_frequency_range_start_hz,
                               default_frequency_range_end_hz,
-                              default_nsym,
+                              2, # default_nysym,
                               default_nsize,
                               snr_threshold=1.5)
 

@@ -78,6 +78,7 @@ class Receiver(object):
 
     def _decode_message(self, encoded_data: bytes, erasures: Set[int]):
         corrected_message = encoded_data
+        errata = erasures
         try:
             corrected_message, _, errata = self._ecc_codec.decode(encoded_data, erase_pos=erasures, only_erasures=True)
         except ReedSolomonError:
@@ -88,7 +89,7 @@ class Receiver(object):
         except ReedSolomonError:
             print(f"No errors corrected even when attempting to correct errors and erasures")
 
-        return corrected_message
+        return corrected_message, errata
 
     def get_message_symbols(self) -> List[OFDMSymbol]:
         if not self._is_synced:
@@ -103,7 +104,7 @@ class Receiver(object):
         raw_message, errors = self._modulation.signal_to_data(list(self._buffer))
         print(raw_message)
         print(errors)
-        decoded_message, _, errata = self._ecc_codec.decode(raw_message, erase_pos=errors)
+        decoded_message, errata = self._decode_message(raw_message, errors)
 
         return raw_message, errata, decoded_message
 

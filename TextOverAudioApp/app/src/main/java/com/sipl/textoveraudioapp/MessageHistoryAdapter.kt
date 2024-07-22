@@ -1,9 +1,11 @@
 package com.sipl.textoveraudioapp
 
 import android.content.Context
+import android.graphics.Color
 import android.text.Spannable
 import android.text.SpannableString
 import android.text.style.BackgroundColorSpan
+import android.text.style.ForegroundColorSpan
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -37,9 +39,13 @@ class MessageHistoryAdapter(var eccSymbols: Int, var eccBlock: Int, val context:
     }
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-        val rawMessage = SpannableString(messageHistory[position].rawData.decodeToString())
+        val rawMessage = colorRawMessage(
+            messageHistory[position].rawData.decodeToString(),
+            messageHistory[position].errors
+        )
 
-        holder.rawMessageView.text = messageHistory[position].data.decodeToString()
+        holder.rawMessageView.setText(rawMessage, TextView.BufferType.SPANNABLE)
+        holder.correctedMessageView.text = messageHistory[position].data.decodeToString()
     }
 
     fun addMessage(messageData: MessageData) {
@@ -47,8 +53,22 @@ class MessageHistoryAdapter(var eccSymbols: Int, var eccBlock: Int, val context:
         notifyItemInserted(messageHistory.size - 1)
     }
 
-    private fun colorRawMessage(message: String): SpannableString {
+    private fun colorRawMessage(message: String, errors: Set<Int>): SpannableString {
         val spannableMessage = SpannableString(message)
+        spannableMessage.setSpan(
+            ForegroundColorSpan(ContextCompat.getColor(context, R.color.raw_message_correct_fg)),
+            0,
+            spannableMessage.length,
+            Spannable.SPAN_INCLUSIVE_EXCLUSIVE
+        )
+        for (errorIndex in errors) {
+            spannableMessage.setSpan(
+                ForegroundColorSpan(ContextCompat.getColor(context, R.color.raw_message_error_fg)),
+                errorIndex,
+                errorIndex,
+                Spannable.SPAN_INCLUSIVE_INCLUSIVE
+            )
+        }
         for (index in spannableMessage.indices step eccBlock) {
             val eccSymbolsEnd = min(index + eccBlock, spannableMessage.length)
             val eccSymbolStart= eccSymbolsEnd - eccSymbols

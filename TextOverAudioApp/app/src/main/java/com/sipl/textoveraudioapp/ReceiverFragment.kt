@@ -44,7 +44,7 @@ class ReceiverFragment : Fragment() {
     private var allDataShort = ArrayList<Short>()
     private var allDataBytes = ArrayList<Byte>()
     private lateinit var audioRecord: AudioRecord
-    private val messageHistoryAdapter = MessageHistoryAdapter()
+    private lateinit var messageHistoryAdapter: MessageHistoryAdapter
     private lateinit var sharedPreferences: SharedPreferences
     private lateinit var python: Python
 
@@ -69,10 +69,14 @@ class ReceiverFragment : Fragment() {
 
         sharedPreferences.registerOnSharedPreferenceChangeListener(onSharedPreferenceChangeCallback)
 
+        messageHistoryAdapter = MessageHistoryAdapter(
+            receiver.eccSymbols,
+            receiver.eccBlock,
+            requireContext()
+        )
 
         _binding = FragmentReceiverBinding.inflate(inflater, container, false)
         return binding.root
-
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
