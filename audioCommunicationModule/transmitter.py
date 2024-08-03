@@ -1,9 +1,10 @@
 from typing import List
 
+import utils
 from OFDM import OFDM
 from reedsolo import RSCodec
 
-from utils import signal_to_pcm
+from utils import signal_to_pcm, crc_checksum_bytes
 
 
 class Transmitter(object):
@@ -28,9 +29,10 @@ class Transmitter(object):
         self._ecc_codec = RSCodec(ecc_symbols, ecc_block)
 
     def transmit_buffer(self, buffer: bytes) -> List[float]:
+        message_data = buffer + utils.crc_checksum_bytes(buffer)
         message_signal = (
             self._modulation.sync_preamble +
-            self._modulation.data_to_signal(self._ecc_codec.encode(buffer)) +
+            self._modulation.data_to_signal(self._ecc_codec.encode(message_data)) +
             self._modulation.sync_preamble)
 
         return message_signal

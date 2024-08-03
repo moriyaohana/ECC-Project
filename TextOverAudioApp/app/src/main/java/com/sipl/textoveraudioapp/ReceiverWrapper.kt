@@ -1,6 +1,5 @@
 package com.sipl.textoveraudioapp
 
-import android.os.Message
 import com.chaquo.python.PyObject
 import com.chaquo.python.Python
 
@@ -40,7 +39,8 @@ class ReceiverWrapper(
     private enum class MessageDataFields{
         RAW_DATA,
         ERRORS,
-        DATA
+        DATA,
+        IS_VALID
     }
 
     fun getMessageHistory(): MessageHistory{
@@ -53,7 +53,8 @@ class ReceiverWrapper(
                 MessageData(
                     messageFieldsList[MessageDataFields.RAW_DATA.ordinal].toJava(ByteArray::class.java),
                     messageFieldsList[MessageDataFields.ERRORS.ordinal].asSet().map { pyObject -> pyObject.toInt() }.toSet(),
-                    messageFieldsList[MessageDataFields.DATA.ordinal].toJava(ByteArray::class.java)
+                    messageFieldsList[MessageDataFields.DATA.ordinal].toJava(ByteArray::class.java),
+                    messageFieldsList[MessageDataFields.IS_VALID.ordinal].toBoolean()
                 )
             )
         }

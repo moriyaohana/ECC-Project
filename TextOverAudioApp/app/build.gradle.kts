@@ -31,6 +31,7 @@ android {
                 install("numpy")
                 install("reedsolo")
                 install("scipy")
+                install("crc")
             }
         }
 

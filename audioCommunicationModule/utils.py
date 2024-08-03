@@ -1,6 +1,8 @@
 import numpy as np
+import crc
 from scipy.ndimage.filters import uniform_filter1d
 from typing import List, Tuple, Union
+from enum import Enum
 
 
 def signal_to_pcm(signal: List[float]) -> bytes:
@@ -72,3 +74,8 @@ def normalized_correlation(signal: Union[np.ndarray, list], preamble: Union[np.n
     correlation = np.correlate(signal, normalized_preamble) / (rolling_std_of_signal * len(preamble))
 
     return correlation
+
+
+CRC_SIZE = 4
+def crc_checksum_bytes(data: bytes) -> bytes:
+    return crc.Calculator(crc.Crc32.CRC32).checksum(data).to_bytes(length=CRC_SIZE, byteorder='little')

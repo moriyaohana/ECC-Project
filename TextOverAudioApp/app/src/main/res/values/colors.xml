@@ -2,10 +2,12 @@
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
-    <color name="raw_message_bg">#B3B9F6CA</color>
+    <color name="raw_message_bg">#7CB342</color>
     <color name="raw_message_ecc_bg">#B3FFFF8D</color>
+    <color name="raw_message_crc_bg">#B2FB8C00</color>
     <color name="raw_message_error_fg">#E53935</color>
     <color name="raw_message_correct_fg">#000000</color>
     <color name="corrected_message_bg">#B382B1FF</color>
+    <color name="corrected_message_invalid_bg">#B3E53935</color>
     <color name="corrected_message_fixed_fg">#43A047</color>
 </resources>

@@ -1,6 +1,10 @@
 package com.sipl.textoveraudioapp
 
-data class MessageData(val rawData: ByteArray, val errors: Set<Int>, val data: ByteArray) {
+data class MessageData(
+    val rawData: ByteArray,
+    val errors: Set<Int>,
+    val data: ByteArray,
+    val isValid: Boolean) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (javaClass != other?.javaClass) return false

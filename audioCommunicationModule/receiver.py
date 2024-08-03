@@ -6,6 +6,7 @@ from symbol import OFDMSymbol
 from reedsolo import RSCodec, ReedSolomonError
 from utils import *
 
+import pdb
 
 class Receiver(object):
     def __init__(self,
@@ -35,7 +36,7 @@ class Receiver(object):
         self._correlation_threshold: float = correlation_threshold
         self._preamble_retries = 0
         self._ecc_codec = RSCodec(ecc_symbols, ecc_block)
-        self._message_history: List[Tuple[bytes, Set[int], bytes]] = []
+        self._message_history: List[Tuple[bytes, Set[int], bytes, bool]] = []
 
     @property
     def sync_preamble(self) -> List[float]:
@@ -79,17 +80,27 @@ class Receiver(object):
     def _decode_message(self, encoded_data: bytes, erasures: Set[int]):
         corrected_message = encoded_data
         errata = erasures
-        try:
-            corrected_message, _, errata = self._ecc_codec.decode(encoded_data, erase_pos=erasures, only_erasures=True)
-        except ReedSolomonError:
-            print(f"No errors corrected by only correcting erasures! Erasures: {len(erasures)}")
-
+        is_message_valid = False
         try:
             corrected_message, _, errata = self._ecc_codec.decode(encoded_data, erase_pos=erasures)
+            is_message_valid = True
         except ReedSolomonError:
-            print(f"No errors corrected even when attempting to correct errors and erasures")
+            pass
 
-        return corrected_message, errata
+        try:
+            corrected_message, _, errata = self._ecc_codec.decode(encoded_data, erase_pos=erasures, only_erasures=True)
+            is_message_valid = True
+        except ReedSolomonError:
+            pass
+
+        if is_message_valid:
+            corrected_message_crc = corrected_message[-CRC_SIZE:]
+            corrected_message = corrected_message[:-CRC_SIZE]
+            is_message_valid = corrected_message_crc == crc_checksum_bytes(corrected_message)
+
+        # if not is_message_valid:
+        #     pdb.set_trace()
+        return corrected_message, errata, is_message_valid
 
     def get_message_symbols(self) -> List[OFDMSymbol]:
         if not self._is_synced:
@@ -97,27 +108,33 @@ class Receiver(object):
 
         return self._modulation.signal_to_symbols(list(self._buffer))
 
-    def get_message_data(self) -> Tuple[bytes, Set[int], bytes]:
+    def get_message_data(self) -> Tuple[bytes, Set[int], bytes, bool]:
         if not self._is_synced:
-            return bytes(), set(), bytes()
+            return bytes(), set(), bytes(), False
 
         raw_message, errors = self._modulation.signal_to_data(list(self._buffer))
-        print(raw_message)
-        print(errors)
-        decoded_message, errata = self._decode_message(raw_message, errors)
+        decoded_message, errata, is_message_valid = self._decode_message(raw_message, errors)
 
-        return raw_message, errata, decoded_message
+        return raw_message, errata, decoded_message, is_message_valid
+
+    def _truncate_buffer_to_whole_samples(self):
+        rounded_length = round(len(self._buffer) / self._modulation.samples_per_symbol) * self._modulation.samples_per_symbol
+        if len(self._buffer) < rounded_length:
+            self._buffer.extend([0] * (rounded_length - len(self._buffer)))
+        else:
+            self._buffer = self._buffer[:rounded_length]
 
     def receive_buffer(self, signal: List[float]) -> None:
         if self._preamble_offset > 0:
             signal = signal[self._preamble_offset:]
             self._preamble_offset = 0
-        self._buffer = np.append(self._buffer, signal)
+        self._buffer.extend(signal)
 
         potential_termination_index = - 2 * len(self.sync_preamble)
         termination_location, _ = self._detect_preamble_in_buffer(self._buffer[potential_termination_index:])
         if self._is_synced and termination_location is not None:
             self._buffer = self._buffer[: potential_termination_index + termination_location]
+            self._truncate_buffer_to_whole_samples()
             self._terminate_message()
 
         self._try_sync()
@@ -127,11 +144,12 @@ class Receiver(object):
         return self.receive_buffer(pcm_to_signal(pcm_data_bytes))
 
     def _terminate_message(self):
-        current_message, current_errors, decoded_message = self.get_message_data()
+        current_message, current_errors, decoded_message, is_message_valid = self.get_message_data()
         self._message_history.append(
             (current_message,
              current_errors,
-             decoded_message)
+             decoded_message,
+             is_message_valid)
         )
         self._preamble_offset = 0
         self._preamble_retries = 0

@@ -38,7 +38,7 @@ def store_audio_file(path: str, pcm_data: bytes):
 
 def test_recorded_file(receiver: Receiver, symbol_map: SymbolMap, path: str):
     audio_data = load_audio_file(path)
-    audio_signal = [0] * 2048 + pcm_to_signal(audio_data)
+    audio_signal = [0] * 10 + pcm_to_signal(audio_data)
 
     chunk_size = default_samples_per_symbol
     for chunk_index in range(0, len(audio_signal), chunk_size):
@@ -59,14 +59,6 @@ def test_receiver_live(receiver: Receiver):
         nonlocal recording_event
         receiver.receive_buffer(pcm_to_signal(input_data))
 
-        # if receiver.last_symbol is not None:
-        #     print(symbol_map.symbols_to_bytes([receiver.last_symbol])[0].decode('ascii', errors='ignore'), end='')
-        # end_time = time.time()
-        # print(f"took {end_time - start_time} secs")
-        # if receiver.last_symbol == symbol_map.termination_symbol:
-        #     recording_event.set()
-        #     return None, pyaudio.paComplete
-        # print(decode_string(*symbol_map.symbols_to_bytes(new_message_symbols)))
         full_data += input_data
 
         if len(receiver.message_history) > 0:
@@ -85,14 +77,14 @@ def test_receiver_live(receiver: Receiver):
                   stream_callback=signal_handler)
 
     print("Recording...")
-    timeout_sec = 7
+    timeout_sec = 100000
     recording_event.wait(timeout_sec)
     print("\nStopped recording!")
 
     recorder.terminate()
     message_signal = np.array(pcm_to_signal(full_data))
     data = receiver.message_history
-    print(f"final message: '{data[0][2]}'")
+    print(f"final message: '{data[0][2]}'. Is valid: {data[0][3]}")
     return
 
 
@@ -144,7 +136,7 @@ def main():
                               default_sample_rate_hz,
                               default_frequency_range_start_hz,
                               default_frequency_range_end_hz,
-                              2, # default_nysym,
+                              default_nsym,
                               default_nsize,
                               snr_threshold=1.5)
 
@@ -152,11 +144,11 @@ def main():
     print(transmitter._ecc_codec.encode(message.encode('ascii')))
     message_signal = transmitter.transmit_buffer(message.encode('ascii'))
     # play_pcm(signal_to_pcm(message_signal), 16000)
-    # store_audio_file("samples\\sample24.wav", signal_to_pcm(message_signal))
+    # store_audio_file("samples\\sample25.wav", signal_to_pcm(message_signal))
 
     transmitter_demonstration(transmitter)
 
-    # test_recorded_file(receiver, symbol_map, "samples/sample24.wav")
+    #test_recorded_file(receiver, symbol_map, "samples/sample25.wav")
     # test_receiver_live(receiver)
 
 
