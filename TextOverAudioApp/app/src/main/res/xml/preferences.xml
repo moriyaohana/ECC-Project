@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <PreferenceCategory
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:title="Modulation">
+
+        <EditTextPreference
+            android:inputType="number"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:defaultValue="3"
+            android:selectAllOnFocus="true"
+            android:singleLine="true"
+            android:title="Symbol Weight"
+            app:key="symbol_weight"
+            app:summary="Number of frequencies transmitted for each symbol" />
+        <EditTextPreference
+            android:inputType="number"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:defaultValue="16"
+            android:selectAllOnFocus="true"
+            android:singleLine="true"
+            android:title="Symbol Size"
+            app:key="symbol_size"
+            app:summary="Number of possible frequencies to select symbol representation from" />
+    </PreferenceCategory>
+    <PreferenceCategory
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:title="Audio Transmittion">
+
+        <EditTextPreference
+            android:inputType="number"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:defaultValue="16000"
+            android:selectAllOnFocus="true"
+            android:singleLine="true"
+            android:title="Sample Rate (Hz)"
+            app:key="sample_rate_hz"
+            app:summary="Sample Rate used for transmitting and receiving audio" />
+        <EditTextPreference
+            android:inputType="number"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:defaultValue="2000"
+            android:selectAllOnFocus="true"
+            android:singleLine="true"
+            android:title="Minimum Allowed Frequency (Hz)"
+            app:key="frequency_range_start_hz"
+            app:summary="Start of frequency range used for modulation" />
+        <EditTextPreference
+            android:inputType="number"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:defaultValue="4000"
+            android:selectAllOnFocus="true"
+            android:singleLine="true"
+            android:title="Maximum Allowed Frequency (Hz)"
+            app:key="frequency_range_end_hz"
+            app:summary="End of frequency range used for modulation" />
+        <EditTextPreference
+            android:inputType="number"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:defaultValue="4096"
+            android:selectAllOnFocus="true"
+            android:singleLine="true"
+            android:title="Symbol Length"
+            app:key="samples_per_symbol"
+            app:summary="Number of samples per symbol" />
+    </PreferenceCategory>
+    <PreferenceCategory
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:title="Error Correction">
+
+        <EditTextPreference
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:defaultValue="1"
+            android:selectAllOnFocus="true"
+            android:singleLine="true"
+            android:title="SNR Threshold"
+            app:key="snr_threshold"
+            app:summary="The ratio between the leading frequencies and background noise below witch a symbol will be considered lost" />
+        <EditTextPreference
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:defaultValue="0.4"
+            android:selectAllOnFocus="true"
+            android:singleLine="true"
+            android:title="Synchronisation Correlation Threashold"
+            app:key="correlation_threshold"
+            app:summary="The normalized correlation value for witch a message start will be detected" />
+        <EditTextPreference
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:defaultValue="5"
+            android:inputType="number"
+            android:selectAllOnFocus="true"
+            android:singleLine="true"
+            android:title="Additional Symbols"
+            app:key="ecc_symbols"
+            app:summary="Number of additional symbols used for error correction, per message block" />
+        <EditTextPreference
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:defaultValue="15"
+            android:inputType="number"
+            android:selectAllOnFocus="true"
+            android:singleLine="true"
+            android:title="Block Size"
+            app:key="ecc_block"
+            app:summary="For error correction, the message is devided into blocks with each corrected independantly" />
+    </PreferenceCategory>
+</PreferenceScreen>

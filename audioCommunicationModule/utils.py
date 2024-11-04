@@ -1,9 +1,11 @@
 import numpy as np
+import crc
 from scipy.ndimage.filters import uniform_filter1d
-from matplotlib import pyplot as plt
+from typing import List, Tuple, Union
+from enum import Enum
 
 
-def signal_to_pcm(signal: list[float]) -> bytes:
+def signal_to_pcm(signal: List[float]) -> bytes:
     # 32767 is the maximum value for 16-bit signed integer
     # sound is represented by a 16 bit value PCM16 (sound format)
     # Normalization by symbol_weight needed to prevent overflow
@@ -13,14 +15,14 @@ def signal_to_pcm(signal: list[float]) -> bytes:
     return pcm_data.tobytes()
 
 
-def pcm_to_signal(pcm_data: bytes) -> list[float]:
+def pcm_to_signal(pcm_data: bytes) -> List[float]:
     pcm_array = np.frombuffer(pcm_data, dtype=np.int16)
 
     PCM_16BIT_MAXIMUM_VALUE = 32767.0
     return list(pcm_array / PCM_16BIT_MAXIMUM_VALUE)
 
 
-def signal_fft(signal: list[float], sample_rate_hz: float) -> list[tuple[float, float]]:
+def signal_fft(signal: List[float], sample_rate_hz: float) -> List[Tuple[float, float]]:
     fft_magnitudes = np.fft.fft(signal)[:len(signal) // 2]
     sampled_frequencies = np.fft.fftfreq(len(signal), 1 / sample_rate_hz)[
                           :len(signal) // 2]
@@ -30,29 +32,7 @@ def signal_fft(signal: list[float], sample_rate_hz: float) -> list[tuple[float, 
     return list(zip(sampled_frequencies, np.abs(fft_magnitudes)))
 
 
-def plot_signal(signal: list[float], sample_rate_hz: float):
-    t = np.linspace(0, len(signal) / sample_rate_hz, len(signal), endpoint=False)
-
-    plt.plot(t, signal)
-    plt.title('Original Signal')
-    plt.xlabel('Time (sec)')
-    plt.ylabel('Amplitude')
-
-    plt.show()
-
-
-def plot_signal_fft(signal: list[float], sample_rate_hz: float):
-    f, fft = list(zip(*signal_fft(signal, sample_rate_hz)))
-    plt.plot(f, fft)
-
-    plt.title('FFT Result freq')
-    plt.xlabel('frequency (Hz)')
-    plt.ylabel('Amplitude')
-
-    plt.show()
-
-
-def inverse_fft(frequencies_hz: list[float], num_samples: int, sample_rate_hz: float) -> list[float]:
+def inverse_fft(frequencies_hz: List[float], num_samples: int, sample_rate_hz: float) -> List[float]:
     sum_of_sin = []
     for time_step in range(num_samples):  # num_samples is representing discrete time axis t[s]
 
@@ -80,7 +60,8 @@ def rolling_std(data: np.ndarray, window_size: int) -> np.ndarray:
 
 
 # TODO: For the Chirp Signal we get a correlation above 1, which is concerning
-def normalized_correlation(signal: np.ndarray | list, preamble: np.ndarray | list) -> np.ndarray:
+def normalized_correlation(signal: Union[np.ndarray, list],
+                           preamble: Union[np.ndarray, list]) -> np.ndarray:
     if not isinstance(signal, np.ndarray):
         signal = np.array(signal)
 
@@ -91,6 +72,12 @@ def normalized_correlation(signal: np.ndarray | list, preamble: np.ndarray | lis
         return np.array([])
     rolling_std_of_signal = rolling_std(signal, len(preamble))
     normalized_preamble = preamble / np.std(preamble)
-    correlation = np.correlate(signal, normalized_preamble) / (rolling_std_of_signal * len(preamble))
+    correlation = np.correlate(signal, normalized_preamble) / (rolling_std_of_signal *
+                                                               len(preamble))
 
     return correlation
+
+
+CRC_SIZE = 4
+def crc_checksum_bytes(data: bytes) -> bytes:
+    return crc.Calculator(crc.Crc32.CRC32).checksum(data).to_bytes(length=CRC_SIZE, byteorder='little')

@@ -1,9 +1,12 @@
+from typing import List, Optional, Tuple, Union, Set
+
 from OFDM import OFDM
 import numpy as np
 from symbol import OFDMSymbol
 from reedsolo import RSCodec, ReedSolomonError
 from utils import *
 
+import pdb
 
 class Receiver(object):
     def __init__(self,
@@ -13,7 +16,8 @@ class Receiver(object):
                  sample_rate_hz: float,
                  frequency_range_start_hz: float,
                  frequency_range_end_hz: float,
-                 ecc_codec: RSCodec,
+                 ecc_symbols: int,
+                 ecc_block: int,
                  snr_threshold: float = 1,
                  correlation_threshold: float = 0.7):
 
@@ -25,49 +29,40 @@ class Receiver(object):
                                 frequency_range_end_hz,
                                 snr_threshold)
         self._is_synced: bool = False
-        self._buffer: list[float] = []
+        self._buffer: List[float] = []
         self._preamble_offset: int = 0
         self._last_sync_location: int = 0
         self._sync_score: int = 0
         self._correlation_threshold: float = correlation_threshold
         self._preamble_retries = 0
-        self._ecc_codec = ecc_codec
+        self._ecc_codec = RSCodec(ecc_symbols, ecc_block)
+        self._message_history: List[Tuple[bytes, Set[int], bytes, bool]] = []
 
     @property
-    def sync_preamble(self) -> list[float]:
+    def sync_preamble(self) -> List[float]:
         return self._modulation.sync_preamble
 
     @property
-    def last_symbol(self) -> None | OFDMSymbol:
+    def last_symbol(self) -> Union[None, OFDMSymbol]:
         if not self._is_synced or len(self._buffer) < 4096:
             return None
 
         return self._modulation.signal_to_symbols(self._buffer[-4096:])[0]
 
-    def _detect_preamble(self) -> tuple[int, float] | tuple[None, None]:
-        correlation = normalized_correlation(np.array(self._buffer[self._last_sync_location:]),
-                                                  np.array(self._modulation.sync_preamble))
-        if len(correlation) == 0:
-            return None, None
-        peak_value = np.max(correlation)
-        if peak_value > self._correlation_threshold:
-            return np.argmax(correlation), max(correlation)
+    @property
+    def message_history(self):
+        return self._message_history
 
-        return None, None
+    @property
+    def is_synchronised(self):
+        return self._is_synced
 
-    def _resync(self, new_sync_location: int, new_sync_score: int):
-        if new_sync_score > self._sync_score:
-            self._sync_score = new_sync_score
-            self._last_sync_location = min(new_sync_location + len(self._modulation.sync_preamble),
-                                           len(self._buffer))
-            self._buffer = self._buffer[new_sync_location + len(self._modulation.sync_preamble):]
+    def _detect_preamble(self) -> Union[Tuple[int, float], Tuple[None, None]]:
+        return self._detect_preamble_in_buffer(self._buffer[self._last_sync_location:])
 
     def _try_sync(self):
-        if self._preamble_retries >= 3:
-            return
-
         if self._is_synced:
-            self._preamble_retries += 1
+            return
 
         preamble_location, sync_score = self._detect_preamble()
         if preamble_location is None:
@@ -77,43 +72,99 @@ class Receiver(object):
 
             return
 
-        if self._is_synced:
-            return self._resync(preamble_location, sync_score)
-
         self._is_synced = True
         self._sync_score = sync_score
         self._preamble_offset = preamble_location + len(self._modulation.sync_preamble) - len(self._buffer)
         self._buffer = self._buffer[preamble_location + len(self._modulation.sync_preamble):]
 
-    def _decode_message(self, encoded_data: bytes, erasures: set[int]):
+    def _decode_message(self, encoded_data: bytes, erasures: Set[int]):
         corrected_message = encoded_data
-        try:
-            corrected_message, _, errata = self._ecc_codec.decode(encoded_data, erase_pos=erasures, only_erasures=True)
-        except ReedSolomonError:
-            print(f"No errors corrected by only correcting erasures! Erasures: {len(erasures)}")
-
+        errata = erasures
+        is_message_valid = False
         try:
             corrected_message, _, errata = self._ecc_codec.decode(encoded_data, erase_pos=erasures)
+            is_message_valid = True
         except ReedSolomonError:
-            print(f"No errors corrected even when attempting to correct errors and erasures")
+            pass
 
-        return corrected_message
+        try:
+            corrected_message, _, errata = self._ecc_codec.decode(encoded_data, erase_pos=erasures, only_erasures=True)
+            is_message_valid = True
+        except ReedSolomonError:
+            pass
 
-    def get_message_symbols(self) -> list[OFDMSymbol]:
+        if is_message_valid:
+            corrected_message_crc = corrected_message[-CRC_SIZE:]
+            corrected_message = corrected_message[:-CRC_SIZE]
+            is_message_valid = corrected_message_crc == crc_checksum_bytes(corrected_message)
+
+        # if not is_message_valid:
+        #     pdb.set_trace()
+        return corrected_message, errata, is_message_valid
+
+    def get_message_symbols(self) -> List[OFDMSymbol]:
         if not self._is_synced:
             return list()
 
         return self._modulation.signal_to_symbols(list(self._buffer))
 
-    def get_message_data(self) -> bytes:
+    def get_message_data(self) -> Tuple[bytes, Set[int], bytes, bool]:
         if not self._is_synced:
-            return bytes()
+            return bytes(), set(), bytes(), False
 
-        return self._decode_message(*self._modulation.signal_to_data(list(self._buffer)))
+        raw_message, errors = self._modulation.signal_to_data(list(self._buffer))
+        decoded_message, errata, is_message_valid = self._decode_message(raw_message, errors)
 
-    def receive_buffer(self, signal: list[float]) -> None:
+        return raw_message, errata, decoded_message, is_message_valid
+
+    def _truncate_buffer_to_whole_samples(self):
+        rounded_length = round(len(self._buffer) / self._modulation.samples_per_symbol) * self._modulation.samples_per_symbol
+        if len(self._buffer) < rounded_length:
+            self._buffer.extend([0] * (rounded_length - len(self._buffer)))
+        else:
+            self._buffer = self._buffer[:rounded_length]
+
+    def receive_buffer(self, signal: List[float]) -> None:
         if self._preamble_offset > 0:
             signal = signal[self._preamble_offset:]
             self._preamble_offset = 0
-        self._buffer = np.append(self._buffer, signal)
+        self._buffer.extend(signal)
+
+        potential_termination_index = - 2 * len(self.sync_preamble)
+        termination_location, _ = self._detect_preamble_in_buffer(self._buffer[potential_termination_index:])
+        if self._is_synced and termination_location is not None:
+            self._buffer = self._buffer[: potential_termination_index + termination_location]
+            self._truncate_buffer_to_whole_samples()
+            self._terminate_message()
+
         self._try_sync()
+
+    def receive_pcm16_buffer(self, pcm_data: List[int]) -> None:
+        pcm_data_bytes = np.array(pcm_data, dtype=np.int16).tobytes()
+        return self.receive_buffer(pcm_to_signal(pcm_data_bytes))
+
+    def _terminate_message(self):
+        current_message, current_errors, decoded_message, is_message_valid = self.get_message_data()
+        self._message_history.append(
+            (current_message,
+             current_errors,
+             decoded_message,
+             is_message_valid)
+        )
+        self._preamble_offset = 0
+        self._preamble_retries = 0
+        self._last_sync_location = 0
+        self._buffer = []
+        self._is_synced = False
+
+    def _detect_preamble_in_buffer(self, buffer: List[float]) -> Union[Tuple[int, float], Tuple[None, None]]:
+        correlation = normalized_correlation(buffer,
+                                             self._modulation.sync_preamble)
+        if len(correlation) == 0:
+            return None, None
+        peak_value = abs(np.max(correlation))
+
+        if peak_value > self._correlation_threshold:
+            return np.argmax(correlation), max(correlation)
+
+        return None, None

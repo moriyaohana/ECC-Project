@@ -1,6 +1,6 @@
 # noinspection PyUnresolvedReferences
 import numpy as np
-from typing import Optional
+from typing import Optional, List, Tuple, Set, Union
 from symbol import OFDMSymbol
 from symbol_map import SymbolMap
 from utils import *
@@ -77,7 +77,7 @@ class OFDM(object):
 
     @staticmethod
     def _get_frequencies(start_range_hz: float, end_range_hz: float, symbol_size: int, sample_rate_hz: float,
-                         num_samples: int) -> list[float]:
+                         num_samples: int) -> List[float]:
         if symbol_size <= 1:
             raise ValueError("The size of the array (symbol_size) must be greater than 1.")
 
@@ -88,7 +88,7 @@ class OFDM(object):
 
         return frequencies
 
-    def _top_frequencies(self, signal: list[float]) -> list[tuple[float, float]]:
+    def _top_frequencies(self, signal: List[float]) -> List[Tuple[float, float]]:
         frequencies = signal_fft(signal, self._sample_rate_hz)
         frequencies = [(freq, amp) for freq, amp in frequencies if freq in self._frequencies]
 
@@ -97,7 +97,7 @@ class OFDM(object):
 
         return sorted_frequencies[:self._symbol_weight + 1]
 
-    def _signal_to_symbol(self, signal: list[float]) -> Optional[OFDMSymbol]:
+    def _signal_to_symbol(self, signal: List[float]) -> Optional[OFDMSymbol]:
         if len(signal) != self._samples_per_symbol:
             raise RuntimeError('Unexpected signal length.'
                                f'Expected {self._samples_per_symbol} but got {len(signal)}')
@@ -115,7 +115,7 @@ class OFDM(object):
 
         return OFDMSymbol(present_frequencies)
 
-    def signal_to_symbols(self, signal: list[float]) -> list[OFDMSymbol]:
+    def signal_to_symbols(self, signal: List[float]) -> List[OFDMSymbol]:
         if len(signal) % self._samples_per_symbol != 0:
             signal = signal + [0] * (self._samples_per_symbol - len(signal) % self._samples_per_symbol)
 
@@ -127,7 +127,7 @@ class OFDM(object):
         return message
 
     # TODO: This is a work-in-progress mess that needs to be redone
-    def _remove_preamble_from_signal(self, signal: list[float]) -> list[float]:
+    def _remove_preamble_from_signal(self, signal: List[float]) -> List[float]:
         new_signal = []
         removed = 0
         for signal_data_index in range(0, len(signal), self._samples_per_symbol):
@@ -144,7 +144,7 @@ class OFDM(object):
 
         return new_signal
 
-    def signal_to_data(self, signal: list[float]) -> tuple[bytes, set[int]]:
+    def signal_to_data(self, signal: List[float]) -> Tuple[bytes, Set[int]]:
         signal = self._remove_preamble_from_signal(signal)
         symbols = self.signal_to_symbols(signal)
         try:
@@ -154,7 +154,7 @@ class OFDM(object):
 
         return self._symbol_map.symbols_to_bytes(symbols)
 
-    def _symbol_to_signal(self, symbol: OFDMSymbol) -> list[float]:
+    def _symbol_to_signal(self, symbol: OFDMSymbol) -> List[float]:
         PADDING_LENGTH = self._samples_per_symbol // 16
         padding_data = [0] * PADDING_LENGTH
         data_length = self._samples_per_symbol - 2 * PADDING_LENGTH
@@ -162,18 +162,15 @@ class OFDM(object):
                 inverse_fft(symbol.frequencies(self._frequencies), data_length, self._sample_rate_hz) +
                 padding_data)
 
-    def symbols_to_signal(self, symbols: OFDMSymbol | list[OFDMSymbol], terminate: bool = True) -> list[float]:
+    def symbols_to_signal(self, symbols: Union[OFDMSymbol, List[OFDMSymbol]]) -> List[float]:
         if not isinstance(symbols, list):
             symbols = [symbols]
         signal = []
-
-        if terminate:
-            symbols.append(self.termination_symbol)
 
         for symbol in symbols:
             signal += self._symbol_to_signal(symbol)
 
         return signal
 
-    def data_to_signal(self, data: bytes, terminate: bool = True) -> list[float]:
-        return self.symbols_to_signal(self._symbol_map.bytes_to_symbols(data), terminate)
+    def data_to_signal(self, data: bytes) -> List[float]:
+        return self.symbols_to_signal(self._symbol_map.bytes_to_symbols(data))
