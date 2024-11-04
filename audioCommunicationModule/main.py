@@ -38,8 +38,9 @@ def store_audio_file(path: str, pcm_data: bytes):
 
 def test_recorded_file(receiver: Receiver, symbol_map: SymbolMap, path: str):
     audio_data = load_audio_file(path)
-    audio_signal = [0] * 10 + pcm_to_signal(audio_data)
-
+    audio_signal = [random.random() * (-1 if random.random() > 0.5 else 1) for _ in range(9573)] + pcm_to_signal(audio_data)
+    import plot_utils
+    plot_utils.plot_signal(audio_signal, 16000)
     chunk_size = default_samples_per_symbol
     for chunk_index in range(0, len(audio_signal), chunk_size):
         receiver.receive_buffer(audio_signal[chunk_index:chunk_index + chunk_size])
@@ -116,6 +117,19 @@ def transmitter_demonstration(transmitter: Transmitter):
         play_pcm(signal_to_pcm(message_signal), default_sample_rate_hz)
 
 
+def generate_graphs_for_project(transmitter: Transmitter):
+    message = "hi"
+    signal = transmitter.transmit_buffer(message.encode('ascii'))
+    sync_signal = signal[:4096]
+    message_signal = signal[4096:(4096*3)]
+
+    import plot_utils
+    plot_utils.plot_signal(message_signal, 16000)
+    plot_utils.plot_signal_fft(message_signal[:4096], 16000, "DFT for t=[0-0.25]")
+    plot_utils.plot_signal_fft(message_signal[2048:(2048 + 4096)], 16000, "DFT for t=[0.125-0.375]")
+    plot_utils.plot_signal(sync_signal, 16000, 'Chirp')
+
+
 def main():
     symbol_map = SymbolMap(default_symbol_size, default_symbol_weight)
     ecc_codec = reedsolo.RSCodec(default_nsym, default_nsize)
@@ -146,9 +160,10 @@ def main():
     # play_pcm(signal_to_pcm(message_signal), 16000)
     # store_audio_file("samples\\sample25.wav", signal_to_pcm(message_signal))
 
-    transmitter_demonstration(transmitter)
+    # transmitter_demonstration(transmitter)
+    #generate_graphs_for_project(transmitter)
 
-    #test_recorded_file(receiver, symbol_map, "samples/sample25.wav")
+    test_recorded_file(receiver, symbol_map, "samples/sample25.wav")
     # test_receiver_live(receiver)
 
 

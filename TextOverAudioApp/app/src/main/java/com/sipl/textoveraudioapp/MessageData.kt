@@ -13,6 +13,7 @@ data class MessageData(
 
         if (!rawData.contentEquals(other.rawData)) return false
         if (errors != other.errors) return false
+
         return data.contentEquals(other.data)
     }
 
@@ -20,6 +21,7 @@ data class MessageData(
         var result = rawData.contentHashCode()
         result = 31 * result + errors.hashCode()
         result = 31 * result + data.contentHashCode()
+        
         return result
     }
 }

@@ -60,7 +60,8 @@ def rolling_std(data: np.ndarray, window_size: int) -> np.ndarray:
 
 
 # TODO: For the Chirp Signal we get a correlation above 1, which is concerning
-def normalized_correlation(signal: Union[np.ndarray, list], preamble: Union[np.ndarray, list]) -> np.ndarray:
+def normalized_correlation(signal: Union[np.ndarray, list],
+                           preamble: Union[np.ndarray, list]) -> np.ndarray:
     if not isinstance(signal, np.ndarray):
         signal = np.array(signal)
 
@@ -71,7 +72,8 @@ def normalized_correlation(signal: Union[np.ndarray, list], preamble: Union[np.n
         return np.array([])
     rolling_std_of_signal = rolling_std(signal, len(preamble))
     normalized_preamble = preamble / np.std(preamble)
-    correlation = np.correlate(signal, normalized_preamble) / (rolling_std_of_signal * len(preamble))
+    correlation = np.correlate(signal, normalized_preamble) / (rolling_std_of_signal *
+                                                               len(preamble))
 
     return correlation
 

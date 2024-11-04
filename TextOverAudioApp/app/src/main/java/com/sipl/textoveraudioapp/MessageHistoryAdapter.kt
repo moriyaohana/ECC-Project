@@ -64,7 +64,7 @@ class MessageHistoryAdapter(var eccSymbols: Int, var eccBlock: Int, val context:
         messageHistory.add(messageData)
         notifyItemInserted(messageHistory.size - 1)
     }
-
+    
     private fun getMessageIndices(messageSize: Int): ArrayList<Int> {
         val messageIndices = ArrayList<Int>()
         for (rawIndex in 0..<messageSize step eccBlock) {
